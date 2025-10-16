@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "@privy-io/expo-starter",
-    "slug": "expo-starter",
+    "name": "Web3 Wallet",
+    "slug": "web3-wallet",
     "version": "1.0.0",
+    "owner": "dawe0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -16,7 +17,7 @@
       "usesAppleSignIn": true,
       "supportsTablet": true,
       "bundleIdentifier": "dev.privy.example",
-      "associatedDomains": ["webcredentials:<your-associated-domain>"],
+      "associatedDomains": ["webcredentials:base-sepolia.privy.app"],
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
@@ -31,9 +32,9 @@
       "package": "dev.privy.example"
     },
     "extra": {
-      "privyAppId": "<your-privy-app-id>",
-      "privyClientId": "<your-privy-app-client-id>",
-      "passkeyAssociatedDomain": "https://<your-associated-domain>"
+      "privyAppId": "cmgtb4vg702vqld0da5wktriq",
+      "privyClientId": "client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9",
+      "passkeyAssociatedDomain": "https://base-sepolia.privy.app"
     },
     "plugins": [
       "expo-router",
