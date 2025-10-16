@@ -31,8 +31,8 @@
       "package": "dev.privy.example"
     },
     "extra": {
-      "privyAppId": "cmgtb4vg702vqld0da5wktriq",
-      "privyClientId": "client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9",
+      "privyAppId": "<your-privy-app-id>",
+      "privyClientId": "<your-privy-app-client-id>",
       "passkeyAssociatedDomain": "https://<your-associated-domain>"
     },
     "plugins": [
