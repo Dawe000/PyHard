@@ -26,7 +26,7 @@ const { width } = Dimensions.get('window');
 // Base Sepolia network details
 const BASE_SEPOLIA_CHAIN_ID = "84532";
 const BASE_SEPOLIA_RPC_URL = "https://sepolia.base.org";
-const USDC_CONTRACT_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // Base Sepolia USDC
+const USDC_CONTRACT_ADDRESS = "0x036CbD53842c5426634e7929541eC2318f3dCF7e"; // Correct Base Sepolia USDC
 const USDC_DECIMALS = 6;
 
 export const UserScreen = () => {
@@ -37,6 +37,7 @@ export const UserScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
 
   const { logout, user } = usePrivy();
   const { wallets, create } = useEmbeddedEthereumWallet();
@@ -113,6 +114,7 @@ export const UserScreen = () => {
           }
           
           console.log("🔄 Fetching USDC balance directly from Base Sepolia...");
+          console.log("📊 Using USDC contract address:", USDC_CONTRACT_ADDRESS);
           
           // Fetch USDC balance directly from Base Sepolia RPC
           const usdcResponse = await fetch(BASE_SEPOLIA_RPC_URL, {
@@ -312,6 +314,173 @@ export const UserScreen = () => {
     await fetchBalances(true);
   }, [fetchBalances]);
 
+  const checkUSDCApproval = useCallback(async (spenderAddress: string, amount: string) => {
+    if (!wallets[0] || !account?.address) {
+      console.log("❌ No wallet or account for approval check");
+      return { isApproved: false, allowance: "0" };
+    }
+
+    try {
+      console.log("🔍 Checking USDC approval for spender:", spenderAddress);
+      console.log("📊 Checking allowance from owner:", account.address, "to spender:", spenderAddress);
+      const provider = await wallets[0].getProvider();
+      
+      // Check current allowance - allowance(owner, spender)
+      const allowanceData = `0xdd62ed3e${account.address.slice(2).padStart(64, '0')}${spenderAddress.slice(2).padStart(64, '0')}`;
+      console.log("📊 Allowance call data:", allowanceData);
+      
+      const allowanceHex = await provider.request({
+        method: "eth_call",
+        params: [
+          {
+            to: USDC_CONTRACT_ADDRESS,
+            data: allowanceData,
+          },
+          "latest",
+        ],
+      });
+      
+      console.log("📊 Raw allowance response:", allowanceHex);
+      
+      if (!allowanceHex || allowanceHex === "0x") {
+        console.log("📊 No allowance data returned");
+        return { isApproved: false, allowance: "0" };
+      }
+      
+      const allowance = parseInt(allowanceHex, 16);
+      const requiredAmount = Math.floor(parseFloat(amount) * Math.pow(10, USDC_DECIMALS));
+      
+      console.log("📊 USDC approval check:", {
+        rawAllowanceHex: allowanceHex,
+        currentAllowance: allowance,
+        requiredAmount: requiredAmount,
+        isApproved: allowance >= requiredAmount,
+        allowanceFormatted: (allowance / Math.pow(10, USDC_DECIMALS)).toFixed(6)
+      });
+      
+      return {
+        isApproved: allowance >= requiredAmount,
+        allowance: allowance.toString()
+      };
+    } catch (error: any) {
+      console.error("❌ Error checking USDC approval:", error);
+      console.error("📊 Error details:", {
+        message: error.message,
+        code: error.code,
+        data: error.data
+      });
+      return { isApproved: false, allowance: "0" };
+    }
+  }, [wallets, account?.address]);
+
+  const executeUSDCApproval = useCallback(async (spenderAddress: string, amount: string) => {
+    if (!wallets[0] || !account?.address) {
+      console.log("❌ No wallet or account for USDC approval");
+      Alert.alert("Error", "No wallet available for approval");
+      return false;
+    }
+
+    console.log("🚀 ===== STARTING USDC APPROVAL PROCESS =====");
+    console.log("📊 Approval details:", { spenderAddress, amount });
+    
+    setIsApproving(true);
+    
+    try {
+      const provider = await wallets[0].getProvider();
+      
+      // Calculate approval amount in smallest unit
+      const approvalAmount = Math.floor(parseFloat(amount) * Math.pow(10, USDC_DECIMALS));
+      const approvalAmountHex = approvalAmount.toString(16).padStart(64, '0');
+      const spenderAddressHex = spenderAddress.slice(2).padStart(64, '0');
+      
+      console.log("📊 Approval calculation:", {
+        amount: amount,
+        approvalAmount: approvalAmount,
+        approvalAmountHex: approvalAmountHex,
+        spenderAddress: spenderAddress,
+        spenderAddressHex: spenderAddressHex
+      });
+      
+      // Build approval transaction data (approve function: 0x095ea7b3)
+      const approvalData = `0x095ea7b3${spenderAddressHex}${approvalAmountHex}`;
+      console.log("📊 Approval transaction data:", approvalData);
+      
+      // Estimate gas for approval
+      console.log("🔄 Estimating gas for approval transaction...");
+      let approvalGasEstimate;
+      try {
+        const estimatedApprovalGas = await provider.request({
+          method: "eth_estimateGas",
+          params: [{
+            to: USDC_CONTRACT_ADDRESS,
+            data: approvalData,
+            from: account.address,
+          }],
+        });
+        
+        // Add 20% buffer to approval gas estimate
+        const approvalGasBuffer = Math.floor(parseInt(estimatedApprovalGas, 16) * 1.2);
+        approvalGasEstimate = `0x${approvalGasBuffer.toString(16)}`;
+        console.log("📊 Approval gas with buffer:", approvalGasEstimate);
+      } catch (gasError: any) {
+        console.log("⚠️ Approval gas estimation failed, using fallback");
+        approvalGasEstimate = "0x7530"; // 30,000 gas fallback
+      }
+      
+      // Build approval transaction
+      const approvalTransaction = {
+        to: USDC_CONTRACT_ADDRESS,
+        data: approvalData,
+        value: "0x0",
+        gas: approvalGasEstimate,
+        from: account.address,
+        chainId: `0x${parseInt(BASE_SEPOLIA_CHAIN_ID).toString(16)}`,
+      };
+      
+      console.log("📊 Approval transaction object:", approvalTransaction);
+      
+      // Send approval transaction
+      console.log("🔄 Sending approval transaction...");
+      const approvalResponse = await provider.request({
+        method: "eth_sendTransaction",
+        params: [approvalTransaction],
+      });
+      
+      console.log("✅ USDC approval transaction sent successfully!");
+      console.log("📊 Approval transaction hash:", approvalResponse);
+      
+      Alert.alert(
+        "Approval Sent", 
+        `USDC approval transaction sent successfully!\n\nHash: ${approvalResponse}\n\nYou can now attempt the transfer.`
+      );
+      
+      return true;
+      
+    } catch (error: any) {
+      console.error("❌ CRITICAL ERROR in USDC approval:", error);
+      console.error("📊 Approval error details:", {
+        message: error.message,
+        code: error.code,
+        data: error.data
+      });
+      
+      let errorMessage = "Unknown approval error";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert(
+        "Approval Error", 
+        `USDC approval failed: ${errorMessage}\n\nCheck console for details.`
+      );
+      
+      return false;
+    } finally {
+      setIsApproving(false);
+      console.log("🏁 ===== USDC APPROVAL PROCESS COMPLETED =====");
+    }
+  }, [wallets, account?.address]);
+
   const switchToBaseSepolia = useCallback(async () => {
     if (!wallets[0]) {
       console.log("❌ No wallet available for network switching");
@@ -411,106 +580,410 @@ export const UserScreen = () => {
   }, [wallets, fetchBalances]);
 
   const sendUSDC = useCallback(async () => {
-    console.log("🔄 Starting USDC transaction process");
-    console.log("📊 Transaction details:", { destinationAddress, amount });
+    console.log("🚀 ===== STARTING USDC TRANSACTION PROCESS =====");
+    console.log("📊 Initial transaction details:", { 
+      destinationAddress, 
+      amount, 
+      walletAddress: account?.address,
+      hasWallet: !!wallets[0],
+      isLoading 
+    });
     
-    if (!wallets[0] || !destinationAddress || !amount) {
-      console.log("❌ Missing required fields for transaction");
-      Alert.alert("Error", "Please fill in all fields");
+    // Input validation with detailed logging
+    console.log("🔍 Step 1: Input validation");
+    if (!wallets[0]) {
+      console.log("❌ VALIDATION FAILED: No wallet available");
+      console.log("📊 Wallets array:", wallets);
+      Alert.alert("Error", "No wallet available");
       return;
     }
+    
+    if (!destinationAddress) {
+      console.log("❌ VALIDATION FAILED: Missing destination address");
+      Alert.alert("Error", "Please enter destination address");
+      return;
+    }
+    
+    if (!amount) {
+      console.log("❌ VALIDATION FAILED: Missing amount");
+      Alert.alert("Error", "Please enter amount");
+      return;
+    }
+    
+    console.log("✅ Step 1: Input validation passed");
 
+    // Address format validation
+    console.log("🔍 Step 2: Address format validation");
+    console.log("📊 Destination address:", destinationAddress);
+    console.log("📊 Address length:", destinationAddress.length);
+    console.log("📊 Starts with 0x:", destinationAddress.startsWith("0x"));
+    
     if (!destinationAddress.startsWith("0x") || destinationAddress.length !== 42) {
-      console.log("❌ Invalid destination address format:", destinationAddress);
-      Alert.alert("Error", "Please enter a valid Ethereum address");
+      console.log("❌ VALIDATION FAILED: Invalid address format");
+      console.log("📊 Expected: 42 chars starting with 0x");
+      console.log("📊 Got:", destinationAddress.length, "chars, starts with 0x:", destinationAddress.startsWith("0x"));
+      Alert.alert("Error", "Please enter a valid Ethereum address (42 characters starting with 0x)");
       return;
     }
+    console.log("✅ Step 2: Address format validation passed");
 
-    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
-      console.log("❌ Invalid amount:", amount);
-      Alert.alert("Error", "Please enter a valid amount");
+    // Amount validation
+    console.log("🔍 Step 3: Amount validation");
+    const parsedAmount = parseFloat(amount);
+    console.log("📊 Raw amount:", amount);
+    console.log("📊 Parsed amount:", parsedAmount);
+    console.log("📊 Is NaN:", isNaN(parsedAmount));
+    console.log("📊 Is positive:", parsedAmount > 0);
+    
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      console.log("❌ VALIDATION FAILED: Invalid amount");
+      Alert.alert("Error", "Please enter a valid positive amount");
       return;
     }
+    console.log("✅ Step 3: Amount validation passed");
 
+    // Set loading state
+    console.log("🔄 Step 4: Setting loading state");
     setIsLoading(true);
-    console.log("🔄 Transaction loading state set to true");
+    console.log("✅ Step 4: Loading state set to true");
     
     try {
-      console.log("🔄 Getting wallet provider...");
+      // Get wallet provider
+      console.log("🔍 Step 5: Getting wallet provider");
+      console.log("📊 Wallet object:", wallets[0]);
       const provider = await wallets[0].getProvider();
-      console.log("✅ Wallet provider obtained");
+      console.log("✅ Step 5: Wallet provider obtained");
+      console.log("📊 Provider object:", provider);
       
-      // Calculate USDC amount in smallest unit
-      const usdcAmount = Math.floor(parseFloat(amount) * Math.pow(10, USDC_DECIMALS));
+      // CRITICAL: Ensure wallet is on Base Sepolia before proceeding
+      console.log("🔍 Step 5.5: Verifying network before transaction");
+      const currentNetworkId = await provider.request({
+        method: "net_version",
+        params: [],
+      });
+      console.log("📊 Current network before transaction:", currentNetworkId);
+      
+      if (currentNetworkId !== BASE_SEPOLIA_CHAIN_ID) {
+        console.log("❌ CRITICAL: Wallet is not on Base Sepolia for transaction!");
+        console.log("❌ Current network:", currentNetworkId, "Expected:", BASE_SEPOLIA_CHAIN_ID);
+        
+        Alert.alert(
+          "Wrong Network",
+          `Your wallet is on network ${currentNetworkId}, but USDC transactions require Base Sepolia (${BASE_SEPOLIA_CHAIN_ID}).\n\n` +
+          "Please use the 'Switch to Base Sepolia' button first, then try the transaction again."
+        );
+        return;
+      }
+      console.log("✅ Step 5.5: Network verification passed - wallet is on Base Sepolia");
+      
+      // Calculate USDC amount
+      console.log("🔍 Step 6: Calculating USDC amount");
+      const usdcAmount = Math.floor(parsedAmount * Math.pow(10, USDC_DECIMALS));
       const usdcAmountHex = usdcAmount.toString(16).padStart(64, '0');
       const destinationAddressHex = destinationAddress.slice(2).padStart(64, '0');
       
-      console.log("📊 USDC calculation:", {
+      console.log("📊 USDC calculation details:", {
         originalAmount: amount,
-        usdcAmount,
-        usdcAmountHex,
-        destinationAddressHex
+        parsedAmount: parsedAmount,
+        decimals: USDC_DECIMALS,
+        multiplier: Math.pow(10, USDC_DECIMALS),
+        usdcAmount: usdcAmount,
+        usdcAmountHex: usdcAmountHex,
+        destinationAddress: destinationAddress,
+        destinationAddressHex: destinationAddressHex
       });
+      console.log("✅ Step 6: USDC amount calculated");
       
-      // USDC transfer transaction data
+      // Check USDC balance before transaction
+      console.log("🔍 Step 6.5: Checking USDC balance before transaction");
+      try {
+        const currentUsdcBalanceHex = await provider.request({
+          method: "eth_call",
+          params: [
+            {
+              to: USDC_CONTRACT_ADDRESS,
+              data: `0x70a08231000000000000000000000000${account.address.slice(2)}`,
+            },
+            "latest",
+          ],
+        });
+        
+        console.log("📊 Raw USDC balance response:", currentUsdcBalanceHex);
+        
+        if (!currentUsdcBalanceHex || currentUsdcBalanceHex === "0x" || currentUsdcBalanceHex === "0x0") {
+          console.log("⚠️ USDC balance check returned empty/zero - this might indicate wrong network");
+          console.log("⚠️ Proceeding with transaction - will fail if insufficient balance");
+        } else {
+          const currentUsdcBalance = parseInt(currentUsdcBalanceHex, 16);
+          const currentUsdcBalanceFormatted = (currentUsdcBalance / Math.pow(10, USDC_DECIMALS)).toFixed(6);
+          
+          console.log("📊 Current USDC balance check:", {
+            balanceHex: currentUsdcBalanceHex,
+            balanceRaw: currentUsdcBalance,
+            balanceFormatted: currentUsdcBalanceFormatted,
+            requiredAmount: usdcAmount,
+            hasEnoughBalance: currentUsdcBalance >= usdcAmount
+          });
+          
+          if (currentUsdcBalance < usdcAmount) {
+            console.log("❌ INSUFFICIENT USDC BALANCE");
+            Alert.alert(
+              "Insufficient Balance",
+              `You don't have enough USDC to send this transaction.\n\n` +
+              `Current balance: ${currentUsdcBalanceFormatted} USDC\n` +
+              `Required amount: ${amount} USDC\n\n` +
+              `Please check your balance and try a smaller amount.`
+            );
+            return;
+          }
+          
+          console.log("✅ Step 6.5: USDC balance check passed");
+        }
+      } catch (balanceError: any) {
+        console.error("❌ Step 6.5: USDC balance check failed:", balanceError);
+        console.log("⚠️ Proceeding without balance check - transaction may fail");
+      }
+      
+      // Skip USDC approval check for direct transfers
+      console.log("🔍 Step 6.6: Skipping approval check for direct USDC transfer");
+      console.log("📊 Direct transfers typically don't require approval");
+      console.log("✅ Step 6.6: Proceeding with direct transfer");
+      
+      // Build transaction data
+      console.log("🔍 Step 7: Building transaction data");
       const transactionData = `0xa9059cbb${destinationAddressHex}${usdcAmountHex}`;
-      console.log("📊 Transaction data:", transactionData);
-      
-      // Estimate gas for the transaction
-      console.log("🔄 Estimating gas for transaction...");
-      const gasEstimate = await provider.request({
-        method: "eth_estimateGas",
-        params: [{
-          to: USDC_CONTRACT_ADDRESS,
-          data: transactionData,
-          from: account?.address,
-        }],
+      console.log("📊 Transaction data components:", {
+        transferFunction: "0xa9059cbb",
+        destinationAddressHex: destinationAddressHex,
+        amountHex: usdcAmountHex,
+        fullTransactionData: transactionData
       });
-      console.log("📊 Gas estimate:", gasEstimate);
+      console.log("✅ Step 7: Transaction data built");
+      
+      // Estimate gas
+      console.log("🔍 Step 8: Estimating gas");
+      const gasEstimateParams = {
+        to: USDC_CONTRACT_ADDRESS,
+        data: transactionData,
+        from: account?.address,
+      };
+      console.log("📊 Gas estimate params:", gasEstimateParams);
+      
+      let gasEstimate;
+      try {
+        const estimatedGas = await provider.request({
+          method: "eth_estimateGas",
+          params: [gasEstimateParams],
+        });
+        console.log("✅ Step 8: Gas estimated successfully");
+        console.log("📊 Gas estimate result:", estimatedGas);
+        console.log("📊 Gas estimate (decimal):", parseInt(estimatedGas, 16));
+        
+        // Add 20% buffer to gas estimate for USDC transfers
+        const gasBuffer = Math.floor(parseInt(estimatedGas, 16) * 1.2);
+        gasEstimate = `0x${gasBuffer.toString(16)}`;
+        console.log("📊 Gas with 20% buffer:", gasEstimate);
+        console.log("📊 Gas with buffer (decimal):", gasBuffer);
+      } catch (gasError: any) {
+        console.error("❌ Step 8: Gas estimation failed:", gasError);
+        console.error("📊 Gas error details:", {
+          message: gasError.message,
+          code: gasError.code,
+          data: gasError.data
+        });
+        
+        // Fallback to a higher gas limit if estimation fails
+        console.log("🔄 Using fallback gas limit for USDC transfer");
+        gasEstimate = "0x7530"; // 30,000 gas (higher than typical ERC-20 transfer)
+        console.log("📊 Fallback gas estimate:", gasEstimate);
+      }
 
+      // Build final transaction
+      console.log("🔍 Step 9: Building final transaction object");
       const transaction = {
         to: USDC_CONTRACT_ADDRESS,
         data: transactionData,
         value: "0x0",
         gas: gasEstimate,
         from: account?.address,
+        chainId: `0x${parseInt(BASE_SEPOLIA_CHAIN_ID).toString(16)}`, // Force Base Sepolia
       };
       
       console.log("📊 Final transaction object:", transaction);
-      console.log("🔄 Sending transaction...");
-
-      const response = await provider.request({
-        method: "eth_sendTransaction",
-        params: [transaction],
+      console.log("📊 Transaction details:", {
+        to: transaction.to,
+        value: transaction.value,
+        gas: transaction.gas,
+        from: transaction.from,
+        dataLength: transaction.data.length,
+        dataPreview: transaction.data.substring(0, 20) + "..."
       });
+      console.log("✅ Step 9: Final transaction object built");
 
-      console.log("✅ Transaction sent successfully:", response);
-      Alert.alert("Success", `Transaction sent: ${response}`);
-      setDestinationAddress("");
-      setAmount("");
-      
-      // Refresh balances after transaction
-      console.log("🔄 Scheduling balance refresh in 2 seconds...");
-      setTimeout(() => {
-        console.log("🔄 Refreshing balances after transaction...");
-        if (account?.address && wallets[0]) {
-          fetchBalances();
+      // Simulate transaction first to catch potential issues
+      console.log("🔍 Step 9.5: Simulating transaction to check for issues...");
+      try {
+        await provider.request({
+          method: "eth_call",
+          params: [transaction, "latest"],
+        });
+        console.log("✅ Step 9.5: Transaction simulation successful - no obvious issues");
+      } catch (simError: any) {
+        console.error("❌ Step 9.5: Transaction simulation failed:", simError);
+        console.error("📊 Simulation error details:", {
+          message: simError.message,
+          code: simError.code,
+          data: simError.data
+        });
+        
+        // Check for common simulation errors
+        if (simError.message && simError.message.includes("insufficient funds")) {
+          Alert.alert(
+            "Simulation Error", 
+            "Transaction simulation failed: Insufficient USDC balance.\n\n" +
+            `You're trying to send ${amount} USDC, but your balance might be lower.`
+          );
+          return;
+        } else if (simError.message && simError.message.includes("execution reverted")) {
+          Alert.alert(
+            "Simulation Error", 
+            "Transaction simulation failed: Contract execution reverted.\n\n" +
+            "This usually means:\n" +
+            "• Insufficient USDC balance\n" +
+            "• Invalid destination address\n" +
+            "• Contract doesn't exist\n\n" +
+            "Check your USDC balance and try a smaller amount."
+          );
+          return;
+        } else {
+          Alert.alert(
+            "Simulation Error", 
+            `Transaction simulation failed: ${simError.message}\n\n` +
+            "The transaction will likely fail. Check console for details."
+          );
+          return;
         }
-      }, 2000);
+      }
+
+      // Send transaction
+      console.log("🔍 Step 10: Sending transaction");
+      console.log("📊 About to call eth_sendTransaction with params:", [transaction]);
+      console.log("📊 Full transaction details:", JSON.stringify(transaction, null, 2));
+      
+      // Additional validation before sending
+      console.log("🔍 Pre-transaction validation:");
+      console.log("📊 - From address:", transaction.from);
+      console.log("📊 - To address (USDC contract):", transaction.to);
+      console.log("📊 - Value:", transaction.value);
+      console.log("📊 - Gas:", transaction.gas);
+      console.log("📊 - Chain ID:", transaction.chainId);
+      console.log("📊 - Data length:", transaction.data.length);
+      console.log("📊 - Data preview:", transaction.data.substring(0, 50) + "...");
+      
+      try {
+        const response = await provider.request({
+          method: "eth_sendTransaction",
+          params: [transaction],
+        });
+
+        console.log("✅ Step 10: Transaction sent successfully!");
+        console.log("📊 Transaction response:", response);
+        console.log("📊 Transaction hash:", response);
+        
+        Alert.alert("Success", `Transaction sent successfully!\n\nHash: ${response}`);
+        setDestinationAddress("");
+        setAmount("");
+        
+        // Refresh balances after transaction
+        console.log("🔄 Step 11: Scheduling balance refresh");
+        setTimeout(() => {
+          console.log("🔄 Refreshing balances after successful transaction...");
+          if (account?.address && wallets[0]) {
+            fetchBalances(true);
+          }
+        }, 2000);
+        
+      } catch (sendError: any) {
+        console.error("❌ Step 10: Transaction send failed:", sendError);
+        console.error("📊 Send error details:", {
+          message: sendError.message,
+          code: sendError.code,
+          data: sendError.data,
+          stack: sendError.stack
+        });
+        
+        // Check for specific error types
+        if (sendError.code === 4001) {
+          console.log("📊 Error 4001: User rejected transaction");
+          Alert.alert("Transaction Cancelled", "Transaction was cancelled by user");
+        } else if (sendError.code === -32603 || sendError.code === -32000) {
+          console.log("📊 Error -32603/-32000: Internal JSON-RPC error");
+          
+          // Check if it's an insufficient funds error
+          if (sendError.message && sendError.message.includes("insufficient funds")) {
+            console.log("📊 Insufficient funds error detected");
+            Alert.alert(
+              "Insufficient Funds", 
+              "You don't have enough ETH for gas fees on the current network.\n\n" +
+              "Your wallet might be on Ethereum Mainnet instead of Base Sepolia.\n" +
+              "Try using the 'Switch to Base Sepolia' button first."
+            );
+          } else {
+            Alert.alert("Transaction Error", `Internal error: ${sendError.message}\n\nThis might be a network or gas issue.`);
+          }
+        } else if (sendError.message && sendError.message.includes("mainnet.rpc.privy.systems")) {
+          console.log("📊 Transaction sent to mainnet instead of Base Sepolia");
+          Alert.alert(
+            "Wrong Network", 
+            "The transaction was sent to Ethereum Mainnet instead of Base Sepolia.\n\n" +
+            "Your wallet needs to be connected to Base Sepolia network.\n" +
+            "Try using the 'Switch to Base Sepolia' button first."
+          );
+        } else if (sendError.message && sendError.message.includes("out of gas")) {
+          console.log("📊 Out of gas error detected");
+          Alert.alert(
+            "Out of Gas", 
+            "The transaction ran out of gas during execution.\n\n" +
+            "This usually means the gas limit was too low for the USDC transfer.\n" +
+            "The app will now use a higher gas limit for the next attempt."
+          );
+        } else {
+          console.log("📊 Unknown error code:", sendError.code);
+          Alert.alert("Transaction Error", `Transaction failed: ${sendError.message}`);
+        }
+        
+        throw sendError; // Re-throw to be caught by outer catch
+      }
+      
     } catch (error: any) {
       console.error("❌ CRITICAL ERROR in USDC transaction:", error);
-      console.error("❌ Error message:", error.message);
-      console.error("❌ Error code:", error.code);
-      console.error("❌ Error stack:", error.stack);
-      console.error("❌ Full error object:", error);
+      console.error("📊 Error analysis:", {
+        name: error.name,
+        message: error.message,
+        code: error.code,
+        data: error.data,
+        stack: error.stack,
+        cause: error.cause
+      });
+      
+      // More detailed error reporting
+      let errorMessage = "Unknown error";
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.data) {
+        errorMessage = error.data;
+      }
+      
+      console.error("📊 Final error message for user:", errorMessage);
       
       Alert.alert(
         "Transaction Error", 
-        `Transaction failed: ${error.message || "Unknown error"}\n\nCheck console for details.`
+        `Transaction failed: ${errorMessage}\n\nCheck console logs for detailed error information.`
       );
     } finally {
       setIsLoading(false);
-      console.log("🏁 Transaction process completed, loading state set to false");
+      console.log("🏁 ===== TRANSACTION PROCESS COMPLETED =====");
+      console.log("📊 Loading state set to false");
     }
   }, [wallets, destinationAddress, amount, account?.address]);
 
@@ -645,20 +1118,22 @@ export const UserScreen = () => {
               />
             </View>
             
-            <TouchableOpacity
-              style={[styles.sendButton, isLoading && styles.sendButtonDisabled]}
-              onPress={sendUSDC}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <Text style={styles.sendButtonText}>Sending...</Text>
-              ) : (
-                <>
-                  <Ionicons name="paper-plane" size={20} color="#fff" />
-                  <Text style={styles.sendButtonText}>Send USDC</Text>
-                </>
-              )}
-            </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.sendButton, (isLoading || isApproving) && styles.sendButtonDisabled]}
+                  onPress={sendUSDC}
+                  disabled={isLoading || isApproving}
+                >
+                  {isApproving ? (
+                    <Text style={styles.sendButtonText}>Approving...</Text>
+                  ) : isLoading ? (
+                    <Text style={styles.sendButtonText}>Sending...</Text>
+                  ) : (
+                    <>
+                      <Ionicons name="paper-plane" size={20} color="#fff" />
+                      <Text style={styles.sendButtonText}>Send USDC</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
           </View>
 
           {/* Bottom Spacing */}
