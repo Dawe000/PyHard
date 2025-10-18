@@ -1,0 +1,22 @@
+name = "paymaster-cf-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+PAYMASTER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Hardhat account #0 private key for testing
+WALLET_FACTORY_ADDRESS = "YOUR_SMART_WALLET_FACTORY_ADDRESS"
+ENTRY_POINT_ADDRESS = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789" # ERC-4337 EntryPoint v0.6
+SUPPORTED_CHAINS = "[1, 84532, 42161]" # Mainnet, Base Sepolia, Arbitrum
+
+[env.production]
+name = "paymaster-cf-worker-prod"
+
+[env.development]
+name = "paymaster-cf-worker-dev"
+
+# KV namespaces for storing data
+[[kv_namespaces]]
+binding = "PAYMASTER_KV"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
