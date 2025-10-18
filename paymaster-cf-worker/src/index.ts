@@ -1,18 +1,17 @@
 // EIP-7702 Gas Sponsorship Worker
-
-import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, http, encodeFunctionData, keccak256, recoverAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { hardhat } from 'viem/chains';
 
 // Types
 interface SponsorRequest {
-  eoaAddress: string;
-  smartWalletAddress: string;
-  functionData: string;
-  value: string;
-  nonce: string;
-  deadline: string;
-  signature: string;
+  eoaAddress: string; // The EOA making the call
+  smartWalletAddress: string; // The SmartWallet to call
+  functionData: string; // Encoded function call (e.g., createSubWallet)
+  value: string; // ETH value (usually 0)
+  nonce: string; // EOA's nonce for replay protection
+  deadline: string; // Expiration timestamp
+  signature: string; // EOA's signature
   chainId: string;
 }
 
@@ -25,11 +24,11 @@ interface SponsorResponse {
 
 interface Env {
   PAYMASTER_KV: KVNamespace;
-  PAYMASTER_PRIVATE_KEY: string;
-  EOA_DELEGATION_ADDRESS: string;
-  EIP7702_PAYMASTER_ADDRESS: string;
+  PAYMASTER_PRIVATE_KEY: string; // Relayer wallet private key for gas sponsorship
+  EOA_DELEGATION_ADDRESS: string; // EOADelegation contract address
+  EIP7702_PAYMASTER_ADDRESS: string; // EIP7702Paymaster contract address
   SMART_WALLET_FACTORY_ADDRESS: string;
-  RPC_URL: string;
+  RPC_URL: string; // RPC endpoint (e.g., http://127.0.0.1:8545)
 }
 
 export default {
@@ -85,53 +84,53 @@ export default {
 async function handleSponsorTransaction(request: Request, env: Env): Promise<SponsorResponse> {
   const sponsorRequest: SponsorRequest = await request.json();
   
-  console.log('📥 Processing sponsor request:', {
+  console.log('📥 Received sponsor request:', {
     eoaAddress: sponsorRequest.eoaAddress,
     smartWalletAddress: sponsorRequest.smartWalletAddress,
     nonce: sponsorRequest.nonce,
-    chainId: sponsorRequest.chainId
+    deadline: sponsorRequest.deadline
   });
 
   try {
-    // 1. Basic validation
-    if (!sponsorRequest.eoaAddress || !sponsorRequest.smartWalletAddress || !sponsorRequest.functionData) {
-      return { transactionHash: '', success: false, error: 'Missing required fields' };
-    }
-
-    // 2. Check deadline
-    const currentTime = Math.floor(Date.now() / 1000);
-    if (parseInt(sponsorRequest.deadline) < currentTime) {
-      return { ERR: 'Request expired' };
-    }
-
-    // 3. Create clients
+    // Step 1: Validate request
+    validateRequest(sponsorRequest);
+    
+    // Step 2: Verify EOA signature
+    await verifyEOASignature(sponsorRequest);
+    
+    // Step 3: Check if EOA is whitelisted in paymaster
+    // TODO: Implement on-chain check when needed
+    // await checkWhitelist(sponsorRequest.eoaAddress, env);
+    
+    // Step 4: Create clients
     const publicClient = createPublicClient({
       chain: hardhat,
-      transport: http(env.RPC_URL)
+      transport: http(env.RPC_URL || 'http://127.0.0.1:8545')
     });
 
     const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
     const walletClient = createWalletClient({
       account: relayerAccount,
       chain: hardhat,
-      transport: http(env.RPC_URL)
+      transport: http(env.RPC_URL || 'http://127.0.0.1:8545')
     });
 
-    // 4. Check if EOA is whitelisted (simplified - skip for demo)
-    console.log('🔍 Skipping whitelist check for demo');
-
-    // 5. Encode call to EOADelegation.executeOnSmartWallet
+    console.log('🔑 Relayer address:', relayerAccount.address);
+    
+    // Step 5: Encode call to EOADelegation.executeOnSmartWallet()
     const executeData = encodeFunctionData({
       abi: [{
         type: 'function',
         name: 'executeOnSmartWallet',
         inputs: [
-          { type: 'address', name: 'smartWallet' },
-          { type: 'bytes', name: 'data' },
-          { type: 'uint256', name: 'nonce' },
-          { type: 'uint256', name: 'deadline' },
-          { type: 'bytes', name: 'signature' }
-        ]
+          { name: 'smartWallet', type: 'address' },
+          { name: 'data', type: 'bytes' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+          { name: 'signature', type: 'bytes' }
+        ],
+        outputs: [{ name: '', type: 'bytes' }],
+        stateMutability: 'nonpayable'
       }],
       functionName: 'executeOnSmartWallet',
       args: [
@@ -143,28 +142,112 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       ]
     });
 
-    // 6. Submit transaction
-    console.log('🚀 Submitting transaction to EOADelegation...');
-    const hash = await walletClient.sendTransaction({
+    console.log('📦 Encoded executeOnSmartWallet call');
+    
+    // Step 6: Estimate gas
+    const gasEstimate = await publicClient.estimateGas({
+      account: relayerAccount.address,
       to: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
       data: executeData,
-      value: 0n
+      value: BigInt(sponsorRequest.value || '0')
     });
 
-    console.log('✅ Transaction submitted:', hash);
+    console.log('⛽ Gas estimate:', gasEstimate.toString());
+    
+    // Step 7: Submit transaction with gas sponsorship
+    const txHash = await walletClient.sendTransaction({
+      to: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
+      data: executeData,
+      value: BigInt(sponsorRequest.value || '0'),
+      gas: gasEstimate
+    });
+
+    console.log('✅ Transaction submitted:', txHash);
+    
+    // Step 8: Wait for transaction receipt
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    
+    console.log('✅ Transaction confirmed:', {
+      hash: txHash,
+      gasUsed: receipt.gasUsed.toString(),
+      status: receipt.status
+    });
 
     return {
-      transactionHash: hash,
-      success: true,
-      gasUsed: '0'
+      transactionHash: txHash,
+      success: receipt.status === 'success',
+      gasUsed: receipt.gasUsed.toString()
     };
 
   } catch (error) {
-    console.error('❌ Error in sponsor transaction:', error);
-    return { 
-      transactionHash: '', 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    console.error('❌ Error sponsoring transaction:', error);
+    return {
+      transactionHash: '',
+      success: false,
+      error: (error as Error).message
     };
   }
+}
+
+function validateRequest(request: SponsorRequest): void {
+  if (!request.eoaAddress || !request.smartWalletAddress || !request.functionData) {
+    throw new Error('Invalid request: missing required fields');
+  }
+
+  if (!request.nonce || !request.deadline || !request.signature) {
+    throw new Error('Invalid request: missing signature fields');
+  }
+
+  // Check deadline hasn't passed
+  const now = Math.floor(Date.now() / 1000);
+  const deadline = parseInt(request.deadline);
+  if (deadline < now) {
+    throw new Error('Deadline has passed');
+  }
+
+  console.log('✅ Request validation passed');
+}
+
+async function verifyEOASignature(request: SponsorRequest): Promise<void> {
+  // Recreate the message hash that was signed
+  const messageHash = keccak256(
+    encodeFunctionData({
+      abi: [{ 
+        type: 'function', 
+        name: 'encode', 
+        inputs: [
+          { type: 'address', name: 'smartWallet' },
+          { type: 'bytes', name: 'data' },
+          { type: 'uint256', name: 'nonce' },
+          { type: 'uint256', name: 'deadline' },
+          { type: 'uint256', name: 'chainId' }
+        ] 
+      }],
+      functionName: 'encode',
+      args: [
+        request.smartWalletAddress as `0x${string}`,
+        request.functionData as `0x${string}`,
+        BigInt(request.nonce),
+        BigInt(request.deadline),
+        BigInt(request.chainId)
+      ]
+    })
+  );
+
+  // Add Ethereum signed message prefix
+  const ethSignedMessageHash = keccak256(
+    `0x${Buffer.from('\x19Ethereum Signed Message:\n32').toString('hex')}${messageHash.slice(2)}`
+  );
+
+  // Recover signer from signature
+  const recoveredAddress = await recoverAddress({
+    hash: ethSignedMessageHash,
+    signature: request.signature as `0x${string}`
+  });
+
+  if (recoveredAddress.toLowerCase() !== request.eoaAddress.toLowerCase()) {
+    throw new Error(`Invalid signature: expected ${request.eoaAddress}, got ${recoveredAddress}`);
+  }
+
+  console.log('✅ Signature verification passed');
 }

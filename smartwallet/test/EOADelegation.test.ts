@@ -1,75 +1,70 @@
-import assert from "node:assert/strict";
-import { describe, it } from "node:test";
-import { encodeFunctionData, keccak256 } from "viem";
-import { network } from "hardhat";
+import { describe, it, beforeEach } from 'node:test';
+import assert from 'node:assert';
+import hre from 'hardhat';
+import { getAddress, encodeFunctionData, keccak256, parseEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
-describe("EOADelegation Unit Tests", async function () {
-  const { viem } = await network.connect();
-  const publicClient = await viem.getPublicClient();
-  
+describe('EOADelegation', () => {
   let eoaDelegation: any;
   let smartWallet: any;
   let factory: any;
   let pyusd: any;
   let owner: any;
   let user: any;
+  let publicClient: any;
 
-  it("Should deploy contracts", async function () {
+  beforeEach(async () => {
     // Get wallet clients
-    const wallets = await viem.getWalletClients();
+    const wallets = await hre.viem.getWalletClients();
     owner = wallets[0];
     user = wallets[1];
 
+    // Get public client
+    publicClient = await hre.viem.getPublicClient();
+
     // Deploy MockPYUSD
-    pyusd = await viem.deployContract("MockPYUSD", []);
+    pyusd = await hre.viem.deployContract('MockPYUSD', []);
 
     // Deploy EOADelegation
-    eoaDelegation = await viem.deployContract("EOADelegation", []);
+    eoaDelegation = await hre.viem.deployContract('EOADelegation', []);
 
     // Deploy SmartWalletFactory
-    factory = await viem.deployContract("SmartWalletFactory", [
+    factory = await hre.viem.deployContract('SmartWalletFactory', [
+      owner.account.address, // Mock entry point
       pyusd.address
     ]);
 
-    assert.ok(eoaDelegation.address);
-    assert.ok(factory.address);
-    console.log("✅ EOADelegation deployed at:", eoaDelegation.address);
-    console.log("✅ Factory deployed at:", factory.address);
-  });
-
-  it("Should create SmartWallet for user", async function () {
     // Create SmartWallet for user
     await factory.write.createWallet([user.account.address]);
     const smartWalletAddress = await factory.read.ownerToWallet([user.account.address]);
     
     // Get SmartWallet contract instance
-    smartWallet = await viem.getContractAt("SmartWallet", smartWalletAddress);
+    smartWallet = await hre.viem.getContractAt('SmartWallet', smartWalletAddress);
 
     // Fund SmartWallet with PYUSD
     await pyusd.write.mint([smartWallet.address, 1000n * 10n**6n]); // 1000 PYUSD
-
-    const balance = await pyusd.read.balanceOf([smartWallet.address]);
-    assert.equal(balance, 1000n * 10n**6n);
-    
-    console.log("✅ SmartWallet created at:", smartWallet.address);
-    console.log("   Initial PYUSD balance:", balance.toString());
   });
 
-  it("Should execute operation on SmartWallet with valid signature", async function () {
+  it('Should deploy EOADelegation contract', async () => {
+    assert.ok(eoaDelegation.address);
+    console.log('✅ EOADelegation deployed at:', eoaDelegation.address);
+  });
+
+  it('Should execute operation on SmartWallet with valid signature', async () => {
     // Prepare transfer data
     const recipient = owner.account.address;
     const transferAmount = 50n * 10n**6n; // 50 PYUSD
     
     const transferData = encodeFunctionData({
       abi: pyusd.abi,
-      functionName: "transfer",
+      functionName: 'transfer',
       args: [recipient, transferAmount]
     });
 
     // Encode SmartWallet.execute() call
     const executeData = encodeFunctionData({
       abi: smartWallet.abi,
-      functionName: "execute",
+      functionName: 'execute',
       args: [pyusd.address, 0n, transferData]
     });
 
@@ -82,17 +77,17 @@ describe("EOADelegation Unit Tests", async function () {
     const messageHash = keccak256(
       encodeFunctionData({
         abi: [{ 
-          type: "function", 
-          name: "encode", 
+          type: 'function', 
+          name: 'encode', 
           inputs: [
-            { type: "address", name: "smartWallet" },
-            { type: "bytes", name: "data" },
-            { type: "uint256", name: "nonce" },
-            { type: "uint256", name: "deadline" },
-            { type: "uint256", name: "chainId" }
+            { type: 'address', name: 'smartWallet' },
+            { type: 'bytes', name: 'data' },
+            { type: 'uint256', name: 'nonce' },
+            { type: 'uint256', name: 'deadline' },
+            { type: 'uint256', name: 'chainId' }
           ] 
         }],
-        functionName: "encode",
+        functionName: 'encode',
         args: [smartWallet.address, executeData, nonce, deadline, chainId]
       })
     );
@@ -103,7 +98,7 @@ describe("EOADelegation Unit Tests", async function () {
     });
 
     // Execute via EOADelegation
-    await eoaDelegation.write.executeOnSmartWallet([
+    const tx = await eoaDelegation.write.executeOnSmartWallet([
       smartWallet.address,
       executeData,
       nonce,
@@ -115,15 +110,15 @@ describe("EOADelegation Unit Tests", async function () {
     const recipientBalance = await pyusd.read.balanceOf([recipient]);
     assert.equal(recipientBalance, transferAmount);
     
-    console.log("✅ Operation executed successfully");
-    console.log("   Recipient balance:", recipientBalance.toString());
+    console.log('✅ Operation executed successfully');
+    console.log('   Recipient balance:', recipientBalance.toString());
   });
 
-  it("Should reject operation with invalid signature", async function () {
+  it('Should reject operation with invalid signature', async () => {
     const executeData = encodeFunctionData({
       abi: smartWallet.abi,
-      functionName: "execute",
-      args: [pyusd.address, 0n, "0x"]
+      functionName: 'execute',
+      args: [pyusd.address, 0n, '0x']
     });
 
     const nonce = await eoaDelegation.read.getNonce([user.account.address]);
@@ -133,17 +128,17 @@ describe("EOADelegation Unit Tests", async function () {
     const messageHash = keccak256(
       encodeFunctionData({
         abi: [{ 
-          type: "function", 
-          name: "encode", 
+          type: 'function', 
+          name: 'encode', 
           inputs: [
-            { type: "address" },
-            { type: "bytes" },
-            { type: "uint256" },
-            { type: "uint256" },
-            { type: "uint256" }
+            { type: 'address' },
+            { type: 'bytes' },
+            { type: 'uint256' },
+            { type: 'uint256' },
+            { type: 'uint256' }
           ] 
         }],
-        functionName: "encode",
+        functionName: 'encode',
         args: [smartWallet.address, executeData, nonce, deadline, 31337n]
       })
     );
@@ -161,18 +156,18 @@ describe("EOADelegation Unit Tests", async function () {
         deadline,
         wrongSignature
       ]);
-      assert.fail("Should have reverted with invalid signature");
+      assert.fail('Should have reverted with invalid signature');
     } catch (error: any) {
-      assert.ok(error.message.includes("InvalidSignature"));
-      console.log("✅ Correctly rejected invalid signature");
+      assert.ok(error.message.includes('InvalidSignature'));
+      console.log('✅ Correctly rejected invalid signature');
     }
   });
 
-  it("Should reject operation with expired deadline", async function () {
+  it('Should reject operation with expired deadline', async () => {
     const executeData = encodeFunctionData({
       abi: smartWallet.abi,
-      functionName: "execute",
-      args: [pyusd.address, 0n, "0x"]
+      functionName: 'execute',
+      args: [pyusd.address, 0n, '0x']
     });
 
     const nonce = await eoaDelegation.read.getNonce([user.account.address]);
@@ -181,17 +176,17 @@ describe("EOADelegation Unit Tests", async function () {
     const messageHash = keccak256(
       encodeFunctionData({
         abi: [{ 
-          type: "function", 
-          name: "encode", 
+          type: 'function', 
+          name: 'encode', 
           inputs: [
-            { type: "address" },
-            { type: "bytes" },
-            { type: "uint256" },
-            { type: "uint256" },
-            { type: "uint256" }
+            { type: 'address' },
+            { type: 'bytes' },
+            { type: 'uint256' },
+            { type: 'uint256' },
+            { type: 'uint256' }
           ] 
         }],
-        functionName: "encode",
+        functionName: 'encode',
         args: [smartWallet.address, executeData, nonce, expiredDeadline, 31337n]
       })
     );
@@ -209,18 +204,18 @@ describe("EOADelegation Unit Tests", async function () {
         expiredDeadline,
         signature
       ]);
-      assert.fail("Should have reverted with expired deadline");
+      assert.fail('Should have reverted with expired deadline');
     } catch (error: any) {
-      assert.ok(error.message.includes("ExpiredDeadline"));
-      console.log("✅ Correctly rejected expired deadline");
+      assert.ok(error.message.includes('ExpiredDeadline'));
+      console.log('✅ Correctly rejected expired deadline');
     }
   });
 
-  it("Should reject operation with invalid nonce", async function () {
+  it('Should reject operation with invalid nonce', async () => {
     const executeData = encodeFunctionData({
       abi: smartWallet.abi,
-      functionName: "execute",
-      args: [pyusd.address, 0n, "0x"]
+      functionName: 'execute',
+      args: [pyusd.address, 0n, '0x']
     });
 
     const wrongNonce = 999n; // Wrong nonce
@@ -229,17 +224,17 @@ describe("EOADelegation Unit Tests", async function () {
     const messageHash = keccak256(
       encodeFunctionData({
         abi: [{ 
-          type: "function", 
-          name: "encode", 
+          type: 'function', 
+          name: 'encode', 
           inputs: [
-            { type: "address" },
-            { type: "bytes" },
-            { type: "uint256" },
-            { type: "uint256" },
-            { type: "uint256" }
+            { type: 'address' },
+            { type: 'bytes' },
+            { type: 'uint256' },
+            { type: 'uint256' },
+            { type: 'uint256' }
           ] 
         }],
-        functionName: "encode",
+        functionName: 'encode',
         args: [smartWallet.address, executeData, wrongNonce, deadline, 31337n]
       })
     );
@@ -257,20 +252,20 @@ describe("EOADelegation Unit Tests", async function () {
         deadline,
         signature
       ]);
-      assert.fail("Should have reverted with invalid nonce");
+      assert.fail('Should have reverted with invalid nonce');
     } catch (error: any) {
-      assert.ok(error.message.includes("InvalidNonce"));
-      console.log("✅ Correctly rejected invalid nonce");
+      assert.ok(error.message.includes('InvalidNonce'));
+      console.log('✅ Correctly rejected invalid nonce');
     }
   });
 
-  it("Should increment nonce after successful execution", async function () {
+  it('Should increment nonce after successful execution', async () => {
     const initialNonce = await eoaDelegation.read.getNonce([user.account.address]);
     
     const executeData = encodeFunctionData({
       abi: smartWallet.abi,
-      functionName: "execute",
-      args: [pyusd.address, 0n, "0x"]
+      functionName: 'execute',
+      args: [pyusd.address, 0n, '0x']
     });
 
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
@@ -278,17 +273,17 @@ describe("EOADelegation Unit Tests", async function () {
     const messageHash = keccak256(
       encodeFunctionData({
         abi: [{ 
-          type: "function", 
-          name: "encode", 
+          type: 'function', 
+          name: 'encode', 
           inputs: [
-            { type: "address" },
-            { type: "bytes" },
-            { type: "uint256" },
-            { type: "uint256" },
-            { type: "uint256" }
+            { type: 'address' },
+            { type: 'bytes' },
+            { type: 'uint256' },
+            { type: 'uint256' },
+            { type: 'uint256' }
           ] 
         }],
-        functionName: "encode",
+        functionName: 'encode',
         args: [smartWallet.address, executeData, initialNonce, deadline, 31337n]
       })
     );
@@ -308,8 +303,9 @@ describe("EOADelegation Unit Tests", async function () {
     const newNonce = await eoaDelegation.read.getNonce([user.account.address]);
     assert.equal(newNonce, initialNonce + 1n);
     
-    console.log("✅ Nonce incremented correctly");
-    console.log("   Initial nonce:", initialNonce.toString());
-    console.log("   New nonce:", newNonce.toString());
+    console.log('✅ Nonce incremented correctly');
+    console.log('   Initial nonce:', initialNonce.toString());
+    console.log('   New nonce:', newNonce.toString());
   });
 });
+
