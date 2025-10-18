@@ -4,14 +4,13 @@ import { parseEther, encodeFunctionData, getAddress } from "viem";
 
 import { network } from "hardhat";
 
-describe("SmartWallet", async function () {
+describe("SmartWallet Unit Tests", async function () {
   const { viem } = await network.connect();
   const publicClient = await viem.getPublicClient();
   
   let smartWallet: any;
   let factory: any;
   let pyusd: any;
-  let entryPoint: any;
   let owner: any;
   let vendor: any;
   let child: any;
@@ -20,11 +19,9 @@ describe("SmartWallet", async function () {
   it("Should deploy contracts and create wallet", async function () {
     // Deploy mock contracts
     pyusd = await viem.deployContract("MockPYUSD");
-    entryPoint = await viem.deployContract("MockEntryPoint");
 
     // Deploy factory
     factory = await viem.deployContract("SmartWalletFactory", [
-      entryPoint.address,
       pyusd.address
     ]);
 

@@ -1,6 +1,6 @@
 # 🚀 PYUSD Smart Wallet System
 
-A complete smart wallet system with gas sponsorship for PYUSD transactions, featuring Account Abstraction (ERC-4337), paymaster integration, and Cloudflare Worker API.
+A complete smart wallet system with gas sponsorship for PYUSD transactions, featuring EIP-7702 delegation, paymaster integration, and Cloudflare Worker API.
 
 ## 🏗️ Architecture
 
@@ -13,7 +13,7 @@ A complete smart wallet system with gas sponsorship for PYUSD transactions, feat
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                     Smart Wallet                            │
-│  • ERC-4337 Account Abstraction                           │
+│  • EIP-7702 EOA Delegation                                │
 │  • PYUSD token management                                 │
 │  • Sub-wallet system for family banking                   │
 │  • Subscription management                                │
@@ -92,13 +92,15 @@ Tests the complete flow:
 7. ✅ Verify PYUSD transfer
 
 ### Unit Tests
-- **SmartWalletUnitTests.test.ts**: Tests smart wallet functionality (20 tests)
-- **PaymasterUnitTests.test.ts**: Tests paymaster functionality (12 tests)
+- **SmartWallet.test.ts**: Tests smart wallet functionality
+- **EOADelegation.test.ts**: Tests EOA delegation functionality  
+- **EIP7702Paymaster.test.ts**: Tests paymaster functionality
+- **EIP7702Integration.test.ts**: Complete end-to-end integration test with CF Worker
 
 ## 🔧 Key Features
 
 ### Smart Wallet Features
-- **Account Abstraction**: ERC-4337 compliant smart wallet
+- **EIP-7702 Delegation**: EOA delegation to smart wallet
 - **PYUSD Integration**: Native PYUSD token support
 - **Sub-wallet System**: Parent-child wallet relationships
 - **Subscription Management**: Automated recurring payments
@@ -111,29 +113,27 @@ Tests the complete flow:
 - **Multi-chain Support**: Ethereum, Base Sepolia, Arbitrum
 
 ### CF Worker Features
-- **REST API**: HTTP endpoints for paymaster integration
-- **Signature Generation**: Cryptographic transaction signing
-- **Validation Logic**: Transaction and wallet validation
+- **REST API**: HTTP endpoints for EIP-7702 transaction sponsorship
+- **Transaction Submission**: Submit delegated transactions to blockchain
+- **Validation Logic**: Transaction and signature validation
 - **Real-time Processing**: Fast transaction sponsorship
 
 ## 🌐 API Endpoints
 
 ### CF Worker API
 - `GET /health` - Health check
-- `POST /sponsor` - Request gas sponsorship
+- `POST /sponsor-transaction` - Request EIP-7702 transaction sponsorship
 
 ### Sponsor Request Format
 ```json
 {
-  "userOp": {
-    "sender": "0x...",
-    "nonce": "0x0",
-    "callData": "0x...",
-    "signature": "0x..."
-  },
-  "userOpHash": "0x...",
-  "maxCost": "0x3b9aca00",
-  "entryPoint": "0x...",
+  "eoaAddress": "0x...",
+  "smartWalletAddress": "0x...",
+  "functionData": "0x...",
+  "value": "0",
+  "nonce": "0",
+  "deadline": "1234567890",
+  "signature": "0x...",
   "chainId": "31337"
 }
 ```
@@ -144,9 +144,10 @@ Tests the complete flow:
 ```toml
 [vars]
 PAYMASTER_PRIVATE_KEY = "0x..."  # Paymaster wallet private key
-WALLET_FACTORY_ADDRESS = "0x..." # Smart wallet factory address
-ENTRY_POINT_ADDRESS = "0x..."    # ERC-4337 EntryPoint address
-SUPPORTED_CHAINS = "[1, 84532, 42161]"  # Supported chain IDs
+EOA_DELEGATION_ADDRESS = "0x..." # EOADelegation contract address
+EIP7702_PAYMASTER_ADDRESS = "0x..." # EIP7702Paymaster contract address
+SMART_WALLET_FACTORY_ADDRESS = "0x..." # Smart wallet factory address
+RPC_URL = "http://172.29.21.34:8545" # Hardhat RPC URL
 ```
 
 ## 📊 Test Results

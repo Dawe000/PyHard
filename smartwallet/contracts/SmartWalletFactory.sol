@@ -26,14 +26,13 @@ contract SmartWalletFactory is Ownable {
     bytes32 private constant SALT = keccak256("PYUSD_SMART_WALLET_FACTORY_V1");
     
     constructor(
-        address _entryPoint,
         IPYUSD _pyusd
     ) Ownable(msg.sender) {
-        entryPoint = _entryPoint;
+        entryPoint = address(0); // No longer needed
         pyusd = _pyusd;
         
         // Deploy implementation contract
-        walletImplementation = address(new SmartWallet(_entryPoint, _pyusd, address(this), msg.sender));
+        walletImplementation = address(new SmartWallet(_pyusd, address(this), msg.sender));
     }
     
     /**
@@ -49,7 +48,7 @@ contract SmartWalletFactory is Ownable {
         bytes32 salt = keccak256(abi.encodePacked(owner, block.timestamp));
         bytes memory bytecode = abi.encodePacked(
             type(SmartWallet).creationCode,
-            abi.encode(entryPoint, pyusd, address(this), owner)
+            abi.encode(pyusd, address(this), owner)
         );
         
         wallet = Create2.computeAddress(salt, keccak256(bytecode), address(this));
@@ -82,7 +81,7 @@ contract SmartWalletFactory is Ownable {
         bytes32 salt = keccak256(abi.encodePacked(owner, uint256(0)));
         bytes memory bytecode = abi.encodePacked(
             type(SmartWallet).creationCode,
-            abi.encode(entryPoint, pyusd, address(this), owner)
+            abi.encode(pyusd, address(this), owner)
         );
         
         return Create2.computeAddress(salt, keccak256(bytecode), address(this));
@@ -100,7 +99,7 @@ contract SmartWalletFactory is Ownable {
         
         bytes memory bytecode = abi.encodePacked(
             type(SmartWallet).creationCode,
-            abi.encode(entryPoint, pyusd, address(this), owner)
+            abi.encode(pyusd, address(this), owner)
         );
         
         wallet = Create2.computeAddress(salt, keccak256(bytecode), address(this));
