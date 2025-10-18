@@ -15,7 +15,6 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
     uint256 private constant NONCE_MASK = 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff;
     
     // State variables
-    address private immutable _entryPoint;
     IPYUSD public immutable pyusd;
     address public immutable factory;
     
@@ -55,12 +54,10 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
     // Events (inherited from interface)
     
     constructor(
-        address entryPoint_,
         IPYUSD _pyusd,
         address _factory,
         address _owner
     ) Ownable(_owner) {
-        _entryPoint = entryPoint_;
         pyusd = _pyusd;
         factory = _factory;
     }
