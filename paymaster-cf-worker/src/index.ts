@@ -1,48 +1,35 @@
-// Import crypto functions for real signature verification
-import { secp256k1 } from '@noble/curves/secp256k1';
-import { keccak256, recoverAddress, encodeFunctionData } from 'viem';
-import { privateKeyToAddress } from 'viem/accounts';
+// EIP-7702 Gas Sponsorship Worker
+import { createPublicClient, createWalletClient, http, encodeFunctionData, keccak256, recoverAddress } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { hardhat } from 'viem/chains';
 
 // Types
-interface UserOperation {
-  sender: string;
-  nonce: string;
-  initCode: string;
-  callData: string;
-  callGasLimit: string;
-  verificationGasLimit: string;
-  preVerificationGas: string;
-  maxFeePerGas: string;
-  maxPriorityFeePerGas: string;
-  paymasterAndData: string;
-  signature: string;
-}
-
 interface SponsorRequest {
-  userOp: UserOperation;
-  userOpHash: string;
-  maxCost: string;
-  entryPoint: string;
+  eoaAddress: string; // The EOA making the call
+  smartWalletAddress: string; // The SmartWallet to call
+  functionData: string; // Encoded function call (e.g., createSubWallet)
+  value: string; // ETH value (usually 0)
+  nonce: string; // EOA's nonce for replay protection
+  deadline: string; // Expiration timestamp
+  signature: string; // EOA's signature
   chainId: string;
 }
 
 interface SponsorResponse {
-  paymasterAndData: string;
-  context: string;
-  sigValidationData: string;
+  transactionHash: string;
+  success: boolean;
+  gasUsed?: string;
+  error?: string;
 }
 
 interface Env {
   PAYMASTER_KV: KVNamespace;
-  PAYMASTER_PRIVATE_KEY: string; // Paymaster wallet private key for gas sponsorship
-  WALLET_FACTORY_ADDRESS: string;
-  ENTRY_POINT_ADDRESS: string;
-  SUPPORTED_CHAINS: string; // JSON array of supported chain IDs
+  PAYMASTER_PRIVATE_KEY: string; // Relayer wallet private key for gas sponsorship
+  EOA_DELEGATION_ADDRESS: string; // EOADelegation contract address
+  EIP7702_PAYMASTER_ADDRESS: string; // EIP7702Paymaster contract address
+  SMART_WALLET_FACTORY_ADDRESS: string;
+  RPC_URL: string; // RPC endpoint (e.g., http://127.0.0.1:8545)
 }
-
-// ERC-4337 constants
-const ENTRY_POINT_V6 = '0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789';
-const PAYMASTER_STAKE = 1000000000000000000n; // 1 ETH
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -61,15 +48,21 @@ export default {
     }
 
     try {
-      if (url.pathname === '/sponsor' && request.method === 'POST') {
-        const response = await handleSponsorRequest(request, env);
+      // EIP-7702 sponsorship endpoint
+      if (url.pathname === '/sponsor-transaction' && request.method === 'POST') {
+        const response = await handleSponsorTransaction(request, env);
         return new Response(JSON.stringify(response), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
 
+      // Health check
       if (url.pathname === '/health' && request.method === 'GET') {
-        return new Response(JSON.stringify({ status: 'healthy', timestamp: Date.now() }), {
+        return new Response(JSON.stringify({ 
+          status: 'healthy', 
+          timestamp: Date.now(),
+          type: 'EIP-7702 Gas Sponsorship Worker'
+        }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       }
@@ -77,7 +70,10 @@ export default {
       return new Response('Not Found', { status: 404, headers: corsHeaders });
     } catch (error) {
       console.error('Error:', error);
-      return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
+      return new Response(JSON.stringify({ 
+        error: 'Internal Server Error', 
+        message: (error as Error).message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
@@ -85,120 +81,173 @@ export default {
   }
 };
 
-async function handleSponsorRequest(request: Request, env: Env): Promise<SponsorResponse> {
+async function handleSponsorTransaction(request: Request, env: Env): Promise<SponsorResponse> {
   const sponsorRequest: SponsorRequest = await request.json();
   
-  // Validate request
-  await validateSponsorRequest(sponsorRequest, env);
-  
-  // Verify signature
-  await verifyUserOpSignature(sponsorRequest.userOp, sponsorRequest.userOpHash);
-  
-  // Check if wallet is whitelisted (created by our factory)
-  await verifyWalletWhitelist(sponsorRequest.userOp.sender, env);
-  
-  // Estimate gas and validate costs
-  const gasEstimate = await estimateGas(sponsorRequest.userOp);
-  
-  // Generate paymaster signature
-  const paymasterAndData = await generatePaymasterSignature(
-    sponsorRequest.userOp,
-    sponsorRequest.userOpHash,
-    gasEstimate,
-    env
-  );
-  
-  return {
-    paymasterAndData,
-    context: '0x', // Empty context for now
-    sigValidationData: '0x' // No additional validation data needed
-  };
+  console.log('📥 Received sponsor request:', {
+    eoaAddress: sponsorRequest.eoaAddress,
+    smartWalletAddress: sponsorRequest.smartWalletAddress,
+    nonce: sponsorRequest.nonce,
+    deadline: sponsorRequest.deadline
+  });
+
+  try {
+    // Step 1: Validate request
+    validateRequest(sponsorRequest);
+    
+    // Step 2: Verify EOA signature
+    await verifyEOASignature(sponsorRequest);
+    
+    // Step 3: Check if EOA is whitelisted in paymaster
+    // TODO: Implement on-chain check when needed
+    // await checkWhitelist(sponsorRequest.eoaAddress, env);
+    
+    // Step 4: Create clients
+    const publicClient = createPublicClient({
+      chain: hardhat,
+      transport: http(env.RPC_URL || 'http://127.0.0.1:8545')
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: hardhat,
+      transport: http(env.RPC_URL || 'http://127.0.0.1:8545')
+    });
+
+    console.log('🔑 Relayer address:', relayerAccount.address);
+    
+    // Step 5: Encode call to EOADelegation.executeOnSmartWallet()
+    const executeData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'executeOnSmartWallet',
+        inputs: [
+          { name: 'smartWallet', type: 'address' },
+          { name: 'data', type: 'bytes' },
+          { name: 'nonce', type: 'uint256' },
+          { name: 'deadline', type: 'uint256' },
+          { name: 'signature', type: 'bytes' }
+        ],
+        outputs: [{ name: '', type: 'bytes' }],
+        stateMutability: 'nonpayable'
+      }],
+      functionName: 'executeOnSmartWallet',
+      args: [
+        sponsorRequest.smartWalletAddress as `0x${string}`,
+        sponsorRequest.functionData as `0x${string}`,
+        BigInt(sponsorRequest.nonce),
+        BigInt(sponsorRequest.deadline),
+        sponsorRequest.signature as `0x${string}`
+      ]
+    });
+
+    console.log('📦 Encoded executeOnSmartWallet call');
+    
+    // Step 6: Estimate gas
+    const gasEstimate = await publicClient.estimateGas({
+      account: relayerAccount.address,
+      to: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
+      data: executeData,
+      value: BigInt(sponsorRequest.value || '0')
+    });
+
+    console.log('⛽ Gas estimate:', gasEstimate.toString());
+    
+    // Step 7: Submit transaction with gas sponsorship
+    const txHash = await walletClient.sendTransaction({
+      to: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
+      data: executeData,
+      value: BigInt(sponsorRequest.value || '0'),
+      gas: gasEstimate
+    });
+
+    console.log('✅ Transaction submitted:', txHash);
+    
+    // Step 8: Wait for transaction receipt
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+    
+    console.log('✅ Transaction confirmed:', {
+      hash: txHash,
+      gasUsed: receipt.gasUsed.toString(),
+      status: receipt.status
+    });
+
+    return {
+      transactionHash: txHash,
+      success: receipt.status === 'success',
+      gasUsed: receipt.gasUsed.toString()
+    };
+
+  } catch (error) {
+    console.error('❌ Error sponsoring transaction:', error);
+    return {
+      transactionHash: '',
+      success: false,
+      error: (error as Error).message
+    };
+  }
 }
 
-async function validateSponsorRequest(request: SponsorRequest, env: Env): Promise<void> {
-  if (!request.userOp || !request.userOpHash || !request.maxCost) {
+function validateRequest(request: SponsorRequest): void {
+  if (!request.eoaAddress || !request.smartWalletAddress || !request.functionData) {
     throw new Error('Invalid request: missing required fields');
   }
-  
-  // Simplified validation for local testing
-  console.log('Validating sponsor request:', request);
-  
-  // For local testing, we'll accept any chain and entry point
-  console.log('Request validation passed (simplified)');
-}
 
-async function verifyUserOpSignature(userOp: UserOperation, userOpHash: string): Promise<void> {
-  // Simplified signature verification for local testing
-  console.log('Verifying signature for userOp:', userOp.sender);
-  console.log('UserOp hash:', userOpHash);
-  
-  // For local testing, we'll just validate that signature exists
-  if (!userOp.signature || userOp.signature.length < 130) {
-    throw new Error('Invalid signature: signature too short');
+  if (!request.nonce || !request.deadline || !request.signature) {
+    throw new Error('Invalid request: missing signature fields');
   }
-  
-  console.log('Signature verification passed (simplified)');
+
+  // Check deadline hasn't passed
+  const now = Math.floor(Date.now() / 1000);
+  const deadline = parseInt(request.deadline);
+  if (deadline < now) {
+    throw new Error('Deadline has passed');
+  }
+
+  console.log('✅ Request validation passed');
 }
 
-async function verifyWalletWhitelist(walletAddress: string, env: Env): Promise<void> {
-  // Check if wallet was created by our factory
-  // For now, we'll accept all wallets - you can implement factory verification later
-  // const isWhitelisted = await checkFactoryWallet(walletAddress, env.WALLET_FACTORY_ADDRESS);
-  // if (!isWhitelisted) {
-  //   throw new Error('Wallet not whitelisted');
-  // }
-  
-  console.log(`Verifying wallet: ${walletAddress}`);
-}
-
-async function estimateGas(userOp: UserOperation): Promise<bigint> {
-  // Simple gas estimation - you can make this more sophisticated
-  const baseGas = 21000n;
-  const verificationGas = BigInt(userOp.verificationGasLimit);
-  const executionGas = BigInt(userOp.callGasLimit);
-  
-  return baseGas + verificationGas + executionGas;
-}
-
-async function generatePaymasterSignature(
-  userOp: UserOperation,
-  userOpHash: string,
-  gasEstimate: bigint,
-  env: Env
-): Promise<string> {
-  // Get paymaster wallet address from private key
-  const paymasterAddress = privateKeyToAddress(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
-  
-  console.log(`🔑 Paymaster Address: ${paymasterAddress}`);
-  console.log(`💰 Gas Estimate: ${gasEstimate.toString()}`);
-  
-  // Create signature data for paymaster validation
-  // This is a simplified version - in production you'd follow ERC-4337 spec exactly
-  const signatureData = keccak256(
+async function verifyEOASignature(request: SponsorRequest): Promise<void> {
+  // Recreate the message hash that was signed
+  const messageHash = keccak256(
     encodeFunctionData({
-      abi: [{ type: "function", name: "hash", inputs: [
-        { type: "address", name: "sender" },
-        { type: "uint256", name: "nonce" },
-        { type: "bytes32", name: "hash" },
-        { type: "uint256", name: "gasEstimate" }
-      ] }],
-      functionName: "hash",
-      args: [userOp.sender, BigInt(userOp.nonce), userOpHash as `0x${string}`, gasEstimate]
+      abi: [{ 
+        type: 'function', 
+        name: 'encode', 
+        inputs: [
+          { type: 'address', name: 'smartWallet' },
+          { type: 'bytes', name: 'data' },
+          { type: 'uint256', name: 'nonce' },
+          { type: 'uint256', name: 'deadline' },
+          { type: 'uint256', name: 'chainId' }
+        ] 
+      }],
+      functionName: 'encode',
+      args: [
+        request.smartWalletAddress as `0x${string}`,
+        request.functionData as `0x${string}`,
+        BigInt(request.nonce),
+        BigInt(request.deadline),
+        BigInt(request.chainId)
+      ]
     })
   );
-  
-  // Sign the data with paymaster private key
-  const signature = secp256k1.sign(signatureData.slice(2), env.PAYMASTER_PRIVATE_KEY.slice(2));
-  const signatureBytes = signature.toCompactRawBytes();
-  
-  console.log(`✍️  Signature created: ${signatureBytes.slice(0, 10)}...`);
-  
-  // Return paymaster address + signature
-  return paymasterAddress.slice(2) + signatureBytes.slice(2);
-}
 
-// Helper function to check if wallet was created by factory (implement later)
-async function checkFactoryWallet(walletAddress: string, factoryAddress: string): Promise<boolean> {
-  // Implementation would query the factory contract to check if wallet was created by it
-  return true; // Placeholder
+  // Add Ethereum signed message prefix
+  const ethSignedMessageHash = keccak256(
+    `0x${Buffer.from('\x19Ethereum Signed Message:\n32').toString('hex')}${messageHash.slice(2)}`
+  );
+
+  // Recover signer from signature
+  const recoveredAddress = await recoverAddress({
+    hash: ethSignedMessageHash,
+    signature: request.signature as `0x${string}`
+  });
+
+  if (recoveredAddress.toLowerCase() !== request.eoaAddress.toLowerCase()) {
+    throw new Error(`Invalid signature: expected ${request.eoaAddress}, got ${recoveredAddress}`);
+  }
+
+  console.log('✅ Signature verification passed');
 }

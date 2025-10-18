@@ -8,7 +8,7 @@ import {
   Inter_600SemiBold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import { baseSepolia } from "viem/chains";
+import { arbitrumSepolia } from "viem/chains";
 
 export default function RootLayout() {
   useFonts({
@@ -20,11 +20,17 @@ export default function RootLayout() {
     <PrivyProvider
       appId={Constants.expoConfig?.extra?.privyAppId}
       clientId={Constants.expoConfig?.extra?.privyClientId}
-      defaultChain={baseSepolia}
-      supportedChains={[baseSepolia]}
+      defaultChain={arbitrumSepolia}
+      supportedChains={[arbitrumSepolia]}
     >
       <Stack>
-        <Stack.Screen name="index" />
+        <Stack.Screen 
+          name="index" 
+          options={{
+            title: "PYUSD Wallet",
+            headerShown: false
+          }} 
+        />
       </Stack>
       <PrivyElements />
     </PrivyProvider>
