@@ -5,10 +5,10 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 PAYMASTER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Hardhat account #0 private key for testing
-EOA_DELEGATION_ADDRESS = "YOUR_EOA_DELEGATION_ADDRESS" # EOADelegation contract address
-EIP7702_PAYMASTER_ADDRESS = "YOUR_EIP7702_PAYMASTER_ADDRESS" # EIP7702Paymaster contract address
-SMART_WALLET_FACTORY_ADDRESS = "YOUR_SMART_WALLET_FACTORY_ADDRESS" # SmartWalletFactory contract address
-RPC_URL = "http://127.0.0.1:8545" # Local Hardhat node
+EOA_DELEGATION_ADDRESS = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512" # EOADelegation contract address
+EIP7702_PAYMASTER_ADDRESS = "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0" # EIP7702Paymaster contract address
+SMART_WALLET_FACTORY_ADDRESS = "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9" # SmartWalletFactory contract address
+RPC_URL = "http://172.29.21.34:8545" # Local Hardhat node
 
 [env.production]
 name = "paymaster-cf-worker-prod"
