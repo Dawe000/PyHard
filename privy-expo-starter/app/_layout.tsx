@@ -22,6 +22,13 @@ export default function RootLayout() {
       clientId={Constants.expoConfig?.extra?.privyClientId}
       defaultChain={arbitrumSepolia}
       supportedChains={[arbitrumSepolia]}
+      config={{
+        embedded: {
+          ethereum: {
+            createOnLogin: 'users-without-wallets',
+          },
+        },
+      }}
     >
       <Stack>
         <Stack.Screen 

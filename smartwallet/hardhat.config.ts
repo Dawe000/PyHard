@@ -36,6 +36,13 @@ const config: HardhatUserConfig = {
       url: configVariable("SEPOLIA_RPC_URL"),
       accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
     },
+    arbitrumSepolia: {
+      type: "http",
+      chainType: "l1",
+      url: "https://sepolia-rollup.arbitrum.io/rpc",
+      chainId: 421614,
+      accounts: [configVariable("ARBITRUM_SEPOLIA_PRIVATE_KEY")],
+    },
   },
 };
 

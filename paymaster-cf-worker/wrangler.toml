@@ -2,13 +2,17 @@ name = "paymaster-cf-worker"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
+account_id = "2ff7a66618cc5f0d9a5ab90044188748"
 
 [vars]
-PAYMASTER_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Hardhat account #0 private key for testing
-EOA_DELEGATION_ADDRESS = "0xe7f1725e7734ce288f8367e1bb143e90bb3f0512" # EOADelegation contract address
-EIP7702_PAYMASTER_ADDRESS = "0x9fe46736679d2d9a65f0992f2272de9f3c7fa6e0" # EIP7702Paymaster contract address
-SMART_WALLET_FACTORY_ADDRESS = "0xcf7ed3acca5a467e9e704c703e8d87f634fb0fc9" # SmartWalletFactory contract address
-RPC_URL = "http://172.29.21.34:8545" # Local Hardhat node
+# PAYMASTER_PRIVATE_KEY is now in .dev.vars for security
+EOA_DELEGATION_ADDRESS = "0x0ef2789981b7a7a52e21320a21afcb4c31903883" # EOADelegation contract address (Arbitrum Sepolia)
+EIP7702_PAYMASTER_ADDRESS = "0x946e4e70b88e0dbfbfc2e2f8fd7c8eaacb3636f4" # EIP7702Paymaster contract address (Arbitrum Sepolia)
+SMART_WALLET_FACTORY_ADDRESS = "0x1f33b3edae1a462a2eafad8531ddbe6ab72f2bef" # SmartWalletFactory contract address (Arbitrum Sepolia)
+PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1" # Real PYUSD token address (Arbitrum Sepolia)
+RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc" # Arbitrum Sepolia RPC
+PRIVY_APP_ID = "your-privy-app-id" # TODO: Replace with actual Privy App ID
+# PRIVY_APP_SECRET is now in .dev.vars for security
 
 [env.production]
 name = "paymaster-cf-worker-prod"
@@ -16,8 +20,8 @@ name = "paymaster-cf-worker-prod"
 [env.development]
 name = "paymaster-cf-worker-dev"
 
-# KV namespaces for storing data
-[[kv_namespaces]]
-binding = "PAYMASTER_KV"
-id = "your-kv-namespace-id"
-preview_id = "your-preview-kv-namespace-id"
+# KV namespaces for storing data (commented out - not needed for this worker)
+# [[kv_namespaces]]
+# binding = "PAYMASTER_KV"
+# id = "your-kv-namespace-id"
+# preview_id = "your-preview-kv-namespace-id"

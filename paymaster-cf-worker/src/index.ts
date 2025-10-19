@@ -2,7 +2,7 @@
 
 import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { hardhat } from 'viem/chains';
+import { arbitrumSepolia } from 'viem/chains';
 
 // Types
 interface SponsorRequest {
@@ -23,6 +23,18 @@ interface SponsorResponse {
   error?: string;
 }
 
+interface CreateSmartWalletRequest {
+  eoaAddress: string;
+  privyToken: string;
+}
+
+interface CreateSmartWalletResponse {
+  smartWalletAddress: string;
+  isNew: boolean;
+  transactionHash?: string;
+  error?: string;
+}
+
 interface Env {
   PAYMASTER_KV: KVNamespace;
   PAYMASTER_PRIVATE_KEY: string;
@@ -30,6 +42,8 @@ interface Env {
   EIP7702_PAYMASTER_ADDRESS: string;
   SMART_WALLET_FACTORY_ADDRESS: string;
   RPC_URL: string;
+  PRIVY_APP_ID: string;
+  PRIVY_APP_SECRET: string;
 }
 
 export default {
@@ -52,6 +66,14 @@ export default {
       // EIP-7702 sponsorship endpoint
       if (url.pathname === '/sponsor-transaction' && request.method === 'POST') {
         const response = await handleSponsorTransaction(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // SmartWallet creation endpoint
+      if (url.pathname === '/create-smart-wallet' && request.method === 'POST') {
+        const response = await handleCreateSmartWallet(request, env);
         return new Response(JSON.stringify(response), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -106,14 +128,14 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
 
     // 3. Create clients
     const publicClient = createPublicClient({
-      chain: hardhat,
+      chain: arbitrumSepolia,
       transport: http(env.RPC_URL)
     });
 
     const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
     const walletClient = createWalletClient({
       account: relayerAccount,
-      chain: hardhat,
+      chain: arbitrumSepolia,
       transport: http(env.RPC_URL)
     });
 
@@ -165,6 +187,144 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       transactionHash: '', 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 
+    };
+  }
+}
+
+async function handleCreateSmartWallet(request: Request, env: Env): Promise<CreateSmartWalletResponse> {
+  try {
+    const { eoaAddress, privyToken }: CreateSmartWalletRequest = await request.json();
+    
+    console.log('📥 Processing SmartWallet creation request:', { eoaAddress });
+
+    // 1. Validate input
+    if (!eoaAddress || !privyToken) {
+      return { 
+        smartWalletAddress: '', 
+        isNew: false, 
+        error: 'Missing required fields: eoaAddress or privyToken' 
+      };
+    }
+
+    // 2. Verify Privy token (simplified for now - will add full verification)
+    // TODO: Add proper Privy JWT verification using @privy-io/server-auth
+    console.log('🔐 PrivyAvailable token verification (simplified)');
+
+    // 3. Create clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    console.log('🔍 Private key from env:', env.PAYMASTER_PRIVATE_KEY);
+    console.log('🔍 Private key type:', typeof env.PAYMASTER_PRIVATE_KEY);
+    console.log('🔍 Private key length:', env.PAYMASTER_PRIVATE_KEY?.length);
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // 4. Check if SmartWallet already exists
+    const getWalletData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'getWallet',
+        inputs: [{ type: 'address', name: 'owner' }],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view'
+      }],
+      functionName: 'getWallet',
+      args: [eoaAddress as `0x${string}`]
+    });
+
+    const existingWallet = await publicClient.call({
+      to: env.SMART_WALLET_FACTORY_ADDRESS as `0x${string}`,
+      data: getWalletData
+    });
+
+    console.log('🔍 Existing wallet check result:', existingWallet);
+    console.log('🔍 existingWallet.data type:', typeof existingWallet.data);
+    console.log('🔍 existingWallet.data value:', existingWallet.data);
+
+    // If wallet exists (not zero address), return it
+    if (existingWallet.data && 
+        typeof existingWallet.data === 'string' && 
+        existingWallet.data !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+      const walletAddress = `0x${existingWallet.data.slice(-40)}`;
+      console.log('✅ SmartWallet already exists:', walletAddress);
+      return {
+        smartWalletAddress: walletAddress,
+        isNew: false
+      };
+    }
+
+    // 5. Create new SmartWallet
+    console.log('🏗️ Creating new SmartWallet for:', eoaAddress);
+    
+    const createWalletData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'createWallet',
+        inputs: [{ type: 'address', name: 'owner' }],
+        outputs: [{ type: 'address', name: 'wallet' }]
+      }],
+      functionName: 'createWallet',
+      args: [eoaAddress as `0x${string}`]
+    });
+
+    const hash = await walletClient.sendTransaction({
+      to: env.SMART_WALLET_FACTORY_ADDRESS as `0x${string}`,
+      data: createWalletData,
+      value: 0n
+    });
+
+    console.log('✅ SmartWallet creation transaction submitted:', hash);
+
+    // Wait for transaction and get the wallet address from logs
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    
+    console.log('🔍 Transaction receipt:', receipt);
+    
+    // Parse the WalletCreated event to get the new wallet address
+    // Event: WalletCreated(address indexed owner, address indexed wallet)
+    let newWalletAddress = '';
+    if (receipt.logs && receipt.logs.length > 0) {
+      console.log('🔍 Parsing logs for WalletCreated event...');
+      // The wallet address is the second indexed parameter (topic[2])
+      const walletCreatedLog = receipt.logs.find(log => 
+        log.topics.length >= 3 && 
+        log.address.toLowerCase() === env.SMART_WALLET_FACTORY_ADDRESS.toLowerCase()
+      );
+      
+      console.log('🔍 Found wallet created log:', walletCreatedLog);
+      
+      if (walletCreatedLog && walletCreatedLog.topics && walletCreatedLog.topics[2]) {
+        newWalletAddress = `0x${walletCreatedLog.topics[2].slice(-40)}`;
+        console.log('✅ Extracted wallet address from log:', newWalletAddress);
+      } else {
+        console.log('⚠️ Could not extract wallet address from logs');
+      }
+    } else {
+      console.log('⚠️ No logs found in transaction receipt');
+    }
+
+    console.log('✅ SmartWallet created:', newWalletAddress);
+
+    return {
+      smartWalletAddress: newWalletAddress,
+      isNew: true,
+      transactionHash: hash
+    };
+
+  } catch (error) {
+    console.error('❌ Error creating SmartWallet:', error);
+    return {
+      smartWalletAddress: '',
+      isNew: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
     };
   }
 }

@@ -20,27 +20,84 @@ import {
   getUserEmbeddedEthereumWallet,
 } from "@privy-io/expo";
 
+import {
+  getOrCreateSmartWallet,
+  getSmartWalletPYUSDBalance,
+} from "@/services/smartWallet";
+
 const { width, height } = Dimensions.get('window');
 
 // Arbitrum Sepolia network details
 const ARBITRUM_SEPOLIA_CHAIN_ID = "421614";
 const ARBITRUM_SEPOLIA_RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc";
-const PYUSD_CONTRACT_ADDRESS = "0x6c3ea9036406852006290770BEdFcAbA0e23A0e8"; // Arbitrum Sepolia PYUSD
+const PYUSD_CONTRACT_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1"; // Real PYUSD on Arbitrum Sepolia
 const PYUSD_DECIMALS = 6;
 
 export const BalanceScreen = () => {
   const [usdBalance, setUsdBalance] = useState("0.00");
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
+  const [isCreatingWallet, setIsCreatingWallet] = useState(false);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
   const account = getUserEmbeddedEthereumWallet(user);
 
-  const fetchBalances = useCallback(async (isManualRefresh = false) => {
+  // Initialize SmartWallet on component mount
+  const initializeSmartWallet = useCallback(async () => {
+    console.log("🔍 Debug account state:");
+    console.log("  - user:", user);
+    console.log("  - account:", account);
+    console.log("  - account?.address:", account?.address);
+    console.log("  - wallets:", wallets);
+    console.log("  - wallets[0]:", wallets[0]);
+
     if (!account?.address) {
-      console.log("❌ No wallet address available");
-      setUsdBalance("0.00");
+      console.log("❌ Cannot initialize SmartWallet: missing address");
+      Alert.alert(
+        "Wallet Not Connected",
+        "Please make sure your wallet is connected. Account address is missing."
+      );
+      return;
+    }
+
+    if (smartWalletAddress) {
+      console.log("✅ SmartWallet already initialized:", smartWalletAddress);
+      return;
+    }
+
+    setIsCreatingWallet(true);
+    try {
+      console.log("🏗️ Initializing SmartWallet for:", account.address);
+      // TODO: Replace with actual Privy token when available
+      const walletInfo = await getOrCreateSmartWallet(account.address, "placeholder-token");
+      
+      setSmartWalletAddress(walletInfo.address);
+      
+      if (walletInfo.isNew) {
+        Alert.alert(
+          "SmartWallet Created!",
+          `Your SmartWallet has been created at ${walletInfo.address.slice(0, 10)}...`
+        );
+      }
+      
+      console.log("✅ SmartWallet initialized:", walletInfo.address);
+    } catch (error: any) {
+      console.error("❌ Error initializing SmartWallet:", error);
+      Alert.alert(
+        "SmartWallet Error",
+        `Failed to initialize SmartWallet: ${error.message}`
+      );
+    } finally {
+      setIsCreatingWallet(false);
+    }
+  }, [account?.address, smartWalletAddress]);
+
+  const fetchBalances = useCallback(async (isManualRefresh = false) => {
+    // Wait for SmartWallet to be initialized
+    if (!smartWalletAddress) {
+      console.log("⏳ Waiting for SmartWallet initialization...");
       return;
     }
 
@@ -72,28 +129,16 @@ export const BalanceScreen = () => {
         return;
       }
       
-      // Fetch PYUSD balance and convert to USD
-      const pyusdCallData = `0x70a08231000000000000000000000000${account.address.slice(2)}`;
+      // Fetch PYUSD balance from SmartWallet
+      const balance = await getSmartWalletPYUSDBalance(
+        smartWalletAddress,
+        provider,
+        PYUSD_CONTRACT_ADDRESS,
+        PYUSD_DECIMALS
+      );
       
-      const pyusdBalanceHex = await provider.request({
-        method: "eth_call",
-        params: [
-          {
-            to: PYUSD_CONTRACT_ADDRESS,
-            data: pyusdCallData,
-          },
-          "latest",
-        ],
-      });
-      
-      if (pyusdBalanceHex && pyusdBalanceHex !== "0x") {
-        const pyusdBalance = (parseInt(pyusdBalanceHex, 16) / Math.pow(10, PYUSD_DECIMALS)).toFixed(2);
-        setUsdBalance(pyusdBalance);
-      } else {
-        setUsdBalance("0.00");
-      }
-      
-      console.log("✅ Balances fetched successfully");
+      setUsdBalance(balance);
+      console.log("✅ SmartWallet balance fetched successfully:", balance);
       
     } catch (error: any) {
       console.error("❌ Error fetching balances:", error);
@@ -101,22 +146,36 @@ export const BalanceScreen = () => {
     } finally {
       setIsRefreshing(false);
     }
-  }, [account?.address, wallets]);
+  }, [smartWalletAddress, wallets]);
 
+  // Initialize SmartWallet on mount - wait for wallet to be ready
   useEffect(() => {
-    fetchBalances();
-  }, [fetchBalances]);
+    if (account?.address) {
+      console.log("✅ Wallet is ready, initializing SmartWallet...");
+      initializeSmartWallet();
+    } else {
+      console.log("⏳ Waiting for wallet to be ready...");
+    }
+  }, [account?.address, initializeSmartWallet]);
+
+  // Fetch balances when SmartWallet is ready
+  useEffect(() => {
+    if (smartWalletAddress) {
+      fetchBalances();
+    }
+  }, [smartWalletAddress, fetchBalances]);
 
   const copyAddress = useCallback(async () => {
-    if (!account?.address) return;
+    const addressToCopy = smartWalletAddress || account?.address;
+    if (!addressToCopy) return;
     
     try {
-      await Clipboard.setStringAsync(account.address);
-      Alert.alert("Copied", "Wallet address copied to clipboard");
+      await Clipboard.setStringAsync(addressToCopy);
+      Alert.alert("Copied", "SmartWallet address copied to clipboard");
     } catch (error) {
       console.error("Error copying address:", error);
     }
-  }, [account?.address]);
+  }, [smartWalletAddress, account?.address]);
 
   const formatAddress = (address: string) => {
     if (!address) return "";
@@ -139,10 +198,16 @@ export const BalanceScreen = () => {
           <View style={styles.headerTop}>
             <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'User'}</Text>
             <TouchableOpacity onPress={copyAddress} style={styles.addressButton}>
-              <Text style={styles.addressText}>{formatAddress(account?.address || "")}</Text>
+              <Text style={styles.addressText}>{formatAddress(smartWalletAddress || account?.address || "")}</Text>
               <Ionicons name="copy-outline" size={16} color="#0070BA" />
             </TouchableOpacity>
           </View>
+          {isCreatingWallet && (
+            <View style={styles.walletCreationBanner}>
+              <Ionicons name="hourglass-outline" size={16} color="#0070BA" />
+              <Text style={styles.walletCreationText}>Creating your SmartWallet...</Text>
+            </View>
+          )}
         </View>
 
         {/* Balance Card */}
@@ -153,11 +218,11 @@ export const BalanceScreen = () => {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.balanceLabel}>USD Balance</Text>
+            <Text style={styles.balanceLabel}>Your Balance</Text>
             <Text style={styles.balanceAmount}>${usdBalance}</Text>
-            <Text style={styles.balanceSubtext}>Available to send</Text>
           </LinearGradient>
         </View>
+
 
         {/* Quick Actions */}
         <View style={styles.quickActions}>
@@ -243,6 +308,20 @@ const styles = StyleSheet.create({
     color: '#0070BA',
     marginRight: 4,
     fontFamily: 'monospace',
+  },
+  walletCreationBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  walletCreationText: {
+    fontSize: 14,
+    color: '#0070BA',
+    marginLeft: 8,
+    fontWeight: '500',
   },
   balanceCard: {
     marginHorizontal: 20,
