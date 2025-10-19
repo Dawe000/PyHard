@@ -33,7 +33,11 @@ const ARBITRUM_SEPOLIA_RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc";
 const PYUSD_CONTRACT_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1"; // Real PYUSD on Arbitrum Sepolia
 const PYUSD_DECIMALS = 6;
 
-export const BalanceScreen = () => {
+interface BalanceScreenProps {
+  navigation?: any;
+}
+
+export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const [usdBalance, setUsdBalance] = useState("0.00");
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -228,6 +232,20 @@ export const BalanceScreen = () => {
         <View style={styles.quickActions}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionButtons}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={() => {
+                console.log("🚀 Send button pressed!");
+                console.log("📍 Navigation object:", navigation);
+                navigation?.navigate?.('send');
+              }}
+            >
+              <View style={styles.actionButtonContent}>
+                <Ionicons name="send" size={24} color="#0070BA" />
+                <Text style={styles.actionButtonText}>Send</Text>
+              </View>
+            </TouchableOpacity>
+            
             <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Add funds feature coming soon!")}>
               <View style={styles.actionButtonContent}>
                 <Ionicons name="add-circle" size={24} color="#34C759" />
@@ -235,19 +253,6 @@ export const BalanceScreen = () => {
               </View>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Withdraw funds feature coming soon!")}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="remove-circle" size={24} color="#FF3B30" />
-                <Text style={styles.actionButtonText}>Withdraw</Text>
-              </View>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Send feature coming soon!")}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="arrow-up" size={24} color="#0070BA" />
-                <Text style={styles.actionButtonText}>Send</Text>
-              </View>
-            </TouchableOpacity>
             
             <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Receive feature coming soon!")}>
               <View style={styles.actionButtonContent}>

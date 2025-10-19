@@ -10,8 +10,9 @@ import { Ionicons } from "@expo/vector-icons";
 import { BalanceScreen } from "./BalanceScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
 import { SubAccountsScreen } from "./SubAccountsScreen";
+import SendScreen from "./SendScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'send';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -19,13 +20,15 @@ export const MainNavigation = () => {
   const renderScreen = () => {
     switch (activeTab) {
       case 'balance':
-        return <BalanceScreen />;
+        return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
       case 'transactions':
         return <TransactionsScreen />;
       case 'subaccounts':
         return <SubAccountsScreen />;
+      case 'send':
+        return <SendScreen />;
       default:
-        return <BalanceScreen />;
+        return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
     }
   };
 

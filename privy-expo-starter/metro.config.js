@@ -4,6 +4,9 @@ const { getDefaultConfig } = require("expo/metro-config");
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
+// Enable import.meta polyfill for Hermes
+config.transformer.unstable_transformImportMeta = true;
+
 const resolveRequestWithPackageExports = (context, moduleName, platform) => {
   // Package exports in `jose` are incorrect, so we need to force the browser version
   if (moduleName === "jose") {

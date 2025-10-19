@@ -3,6 +3,7 @@
 import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrumSepolia } from 'viem/chains';
+import { PrivyClient, AuthorizationContext } from '@privy-io/node';
 
 // Types
 interface SponsorRequest {
@@ -14,6 +15,7 @@ interface SponsorRequest {
   deadline: string;
   signature: string;
   chainId: string;
+  userJWT: string; // User JWT for authorization context
 }
 
 interface SponsorResponse {
@@ -35,16 +37,21 @@ interface CreateSmartWalletResponse {
   error?: string;
 }
 
+
 interface Env {
   PAYMASTER_KV: KVNamespace;
   PAYMASTER_PRIVATE_KEY: string;
   EOA_DELEGATION_ADDRESS: string;
   EIP7702_PAYMASTER_ADDRESS: string;
   SMART_WALLET_FACTORY_ADDRESS: string;
+  PYUSD_ADDRESS: string;
   RPC_URL: string;
   PRIVY_APP_ID: string;
+  PRIVY_CLIENT_ID: string;
   PRIVY_APP_SECRET: string;
 }
+
+
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -79,6 +86,8 @@ export default {
         });
       }
 
+
+
       // Health check
       if (url.pathname === '/health' && request.method === 'GET') {
         return new Response(JSON.stringify({ 
@@ -104,6 +113,77 @@ export default {
   }
 };
 
+// EIP-7702 Authorization Signing Function using Privy Node SDK
+async function signEIP7702Authorization(
+  userJWT: string,
+  eoaAddress: string,
+  contractAddress: string,
+  chainId: number,
+  nonce: number,
+  env: Env
+): Promise<any> {
+  console.log('🔐 Signing EIP-7702 authorization using Privy Node SDK...');
+  console.log('🔐 User JWT length:', userJWT?.length);
+  console.log('🔐 User JWT preview:', userJWT?.substring(0, 50) + '...');
+  console.log('🔐 User JWT full token:', userJWT);
+  console.log('🔐 EOA Address:', eoaAddress);
+  console.log('🔐 Contract Address:', contractAddress);
+  console.log('🔐 Chain ID:', chainId);
+  console.log('🔐 Nonce:', nonce);
+
+  try {
+    // Create Privy client
+    const privyClient = new PrivyClient({
+      appId: env.PRIVY_APP_ID,
+      appSecret: env.PRIVY_APP_SECRET
+    });
+
+    // Create authorization context with user JWT
+    const authorizationContext: AuthorizationContext = {
+      user_jwts: [userJWT]
+    };
+
+    console.log('🔐 Authorization context created with user JWT');
+
+    // Get user's wallets to find the wallet ID
+    const userWallets = await privyClient.wallets().list({
+      authorization_context: authorizationContext
+    });
+
+    console.log('🔐 User wallets found:', userWallets.length);
+
+    // Find the wallet that matches the EOA address
+    const userWallet = userWallets.find((wallet: any) => 
+      wallet.address.toLowerCase() === eoaAddress.toLowerCase()
+    );
+
+    if (!userWallet) {
+      throw new Error(`No wallet found for EOA address: ${eoaAddress}`);
+    }
+
+    console.log('🔐 Found user wallet:', userWallet.id);
+
+    // Sign EIP-7702 authorization using Privy Node SDK
+    const response = await privyClient
+      .wallets()
+      .ethereum()
+      .sign7702Authorization(userWallet.id, {
+        contract: contractAddress,
+        chain_id: chainId,
+        nonce: nonce
+      }, {
+        authorization_context: authorizationContext
+      });
+
+    console.log('✅ EIP-7702 authorization signed successfully:', response);
+
+    return response.authorization;
+  } catch (error) {
+    console.error('❌ EIP-7702 authorization signing failed:', error);
+    throw error;
+  }
+}
+
 async function handleSponsorTransaction(request: Request, env: Env): Promise<SponsorResponse> {
   const sponsorRequest: SponsorRequest = await request.json();
   
@@ -123,10 +203,33 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // 2. Check deadline
     const currentTime = Math.floor(Date.now() / 1000);
     if (parseInt(sponsorRequest.deadline) < currentTime) {
-      return { ERR: 'Request expired' };
+      return { transactionHash: '', success: false, error: 'Request expired' };
     }
 
-    // 3. Create clients
+    // 3. Sign EIP-7702 authorization server-side using Privy Node SDK
+    console.log('🔐 Signing EIP-7702 authorization server-side using Privy Node SDK...');
+    let eip7702Authorization: any = null;
+    
+    try {
+      eip7702Authorization = await signEIP7702Authorization(
+        sponsorRequest.userJWT,
+        sponsorRequest.eoaAddress,
+        env.EOA_DELEGATION_ADDRESS,
+        parseInt(sponsorRequest.chainId),
+        0, // TODO: Get actual nonce
+        env
+      );
+      console.log('✅ EIP-7702 authorization signed successfully:', eip7702Authorization);
+    } catch (signError: any) {
+      console.error('❌ EIP-7702 authorization signing failed:', signError);
+      return { 
+        transactionHash: '', 
+        success: false, 
+        error: `EIP-7702 signing failed: ${signError.message}` 
+      };
+    }
+
+    // 4. Create clients
     const publicClient = createPublicClient({
       chain: arbitrumSepolia,
       transport: http(env.RPC_URL)
@@ -142,7 +245,32 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // 4. Check if EOA is whitelisted (simplified - skip for demo)
     console.log('🔍 Skipping whitelist check for demo');
 
-    // 5. Encode call to EOADelegation.executeOnSmartWallet
+    // 5. Handle EIP-7702 transaction
+    let hash: string;
+    
+    // Use the correct EIP-7702 flow: call EOADelegation.executeOnSmartWallet
+    console.log('🚀 Using EOADelegation.executeOnSmartWallet...');
+    
+    // The data should be the encoded SmartWallet.execute() call
+    const smartWalletExecuteData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'execute',
+        inputs: [
+          { type: 'address', name: 'target' },
+          { type: 'uint256', name: 'value' },
+          { type: 'bytes', name: 'data' }
+        ]
+      }],
+      functionName: 'execute',
+      args: [
+        env.PYUSD_ADDRESS as `0x${string}`, // PYUSD contract
+        0n, // No ETH value
+        sponsorRequest.functionData as `0x${string}` // PYUSD transfer data
+      ]
+    });
+    
+    // Call EOADelegation.executeOnSmartWallet
     const executeData = encodeFunctionData({
       abi: [{
         type: 'function',
@@ -158,16 +286,17 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       functionName: 'executeOnSmartWallet',
       args: [
         sponsorRequest.smartWalletAddress as `0x${string}`,
-        sponsorRequest.functionData as `0x${string}`,
+        smartWalletExecuteData, // The SmartWallet.execute call
         BigInt(sponsorRequest.nonce),
         BigInt(sponsorRequest.deadline),
         sponsorRequest.signature as `0x${string}`
       ]
     });
+    
+    console.log('📝 Using signature from authorization:', sponsorRequest.signature);
+    console.log('📝 Authorization object:', sponsorRequest.authorization);
 
-    // 6. Submit transaction
-    console.log('🚀 Submitting transaction to EOADelegation...');
-    const hash = await walletClient.sendTransaction({
+    hash = await walletClient.sendTransaction({
       to: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
       data: executeData,
       value: 0n
