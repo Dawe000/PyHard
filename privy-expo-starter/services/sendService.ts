@@ -15,7 +15,8 @@ interface SponsorRequest {
   deadline: string;
   signature: string;
   chainId: string;
-  userJWT: string; // User JWT for authorization context
+  identityToken: string; // Identity token for user verification
+  accessToken: string; // Access token for authorization context
 }
 
 interface SponsorResponse {
@@ -37,7 +38,8 @@ interface SendPYUSDResponse {
  * @param smartWalletAddress - The SmartWallet address
  * @param recipientAddress - The recipient address
  * @param amount - The amount to send (in PYUSD, e.g., "10.50")
- * @param userJWT - The user JWT for authorization context
+ * @param identityToken - The identity token for user verification
+ * @param accessToken - The access token for authorization context
  * @returns Send result
  */
 export async function sendPYUSD(
@@ -45,7 +47,8 @@ export async function sendPYUSD(
   smartWalletAddress: string,
   recipientAddress: string,
   amount: string,
-  userJWT: string
+  identityToken: string,
+  accessToken: string
 ): Promise<SendPYUSDResponse> {
   try {
     console.log("📞 ===== SEND SERVICE START =====");
@@ -84,10 +87,12 @@ export async function sendPYUSD(
     const transferData = `0xa9059cbb${recipientAddress.slice(2).padStart(64, '0')}${amountInWei.toString(16).padStart(64, '0')}`;
     console.log("📝 PYUSD transfer data:", transferData);
 
-    // Log the user JWT for server-side EIP-7702 signing
-    console.log("🔐 User JWT for server-side EIP-7702 signing");
-    console.log("🔐 JWT length:", userJWT?.length);
-    console.log("🔐 JWT preview:", userJWT?.substring(0, 50) + "...");
+    // Log the tokens for server-side EIP-7702 signing
+    console.log("🔐 Tokens for server-side EIP-7702 signing");
+    console.log("🔐 Identity token length:", identityToken?.length);
+    console.log("🔐 Identity token preview:", identityToken?.substring(0, 50) + "...");
+    console.log("🔐 Access token length:", accessToken?.length);
+    console.log("🔐 Access token preview:", accessToken?.substring(0, 50) + "...");
 
     // Create sponsor request for transaction execution
     const sponsorRequest: SponsorRequest = {
@@ -99,7 +104,8 @@ export async function sendPYUSD(
       deadline: (Math.floor(Date.now() / 1000) + 3600).toString(), // 1 hour from now
       signature: "0x", // Will be filled by the CF Worker
       chainId: "421614", // Arbitrum Sepolia
-      userJWT: userJWT, // Include user JWT for authorization context
+      identityToken: identityToken, // Include identity token for user verification
+      accessToken: accessToken, // Include access token for authorization context
     };
 
     console.log("📤 Sponsor request:", JSON.stringify(sponsorRequest, null, 2));

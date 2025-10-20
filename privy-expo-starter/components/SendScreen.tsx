@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { usePrivy, useEmbeddedEthereumWallet, useAccessToken } from "@privy-io/expo";
+import { usePrivy, useEmbeddedEthereumWallet, useIdentityToken } from "@privy-io/expo";
 import { getUserEmbeddedEthereumWallet } from "@privy-io/expo";
 import { createPrivyClient } from "@privy-io/expo";
 import { sendPYUSD } from "@/services/sendService";
@@ -26,8 +26,9 @@ const SendScreen = () => {
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
 
-  const { user, getAccessToken } = usePrivy();
+  const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
+  const { getIdentityToken } = useIdentityToken();
   const account = getUserEmbeddedEthereumWallet(user);
 
   // Load SmartWallet address on mount
@@ -102,51 +103,72 @@ const SendScreen = () => {
       console.log("  - Recipient Address:", recipientAddress);
       console.log("  - Amount:", amount);
 
-      // Get user JWT for EIP-7702 authorization using createPrivyClient
-      console.log("📝 Getting user JWT for EIP-7702 authorization using createPrivyClient...");
+      // Get both identity token and access token for EIP-7702 authorization
+      console.log("📝 Getting user tokens for EIP-7702 authorization...");
       
-      // Create Privy client and get access token as per docs
+      // Get identity token for user verification
+      const identityToken = await getIdentityToken();
+      if (!identityToken) {
+        throw new Error("Missing identity token - please ensure you're logged in");
+      }
+      
+      // Get access token for authorization context
       const privy = createPrivyClient({
         appId: 'cmgtb4vg702vqld0da5wktriq', // From app.json
         clientId: 'client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9' // From wrangler.toml
       });
       
-      const userJWT = await privy.getAccessToken();
-      
-      if (!userJWT) {
-        throw new Error("Missing user JWT - please ensure you're logged in");
+      const accessToken = await privy.getAccessToken();
+      if (!accessToken) {
+        throw new Error("Missing access token - please ensure you're logged in");
       }
       
-      console.log("🔍 User JWT type:", typeof userJWT);
-      console.log("🔍 User JWT length:", userJWT?.length);
-      console.log("🔍 User JWT preview:", userJWT?.substring(0, 50) + "...");
-      console.log("🔍 User JWT full token:", userJWT);
+      console.log("🔍 Identity token type:", typeof identityToken);
+      console.log("🔍 Identity token length:", identityToken?.length);
+      console.log("🔍 Identity token preview:", identityToken?.substring(0, 50) + "...");
+      console.log("🔍 Access token type:", typeof accessToken);
+      console.log("🔍 Access token length:", accessToken?.length);
+      console.log("🔍 Access token preview:", accessToken?.substring(0, 50) + "...");
       
-      // Validate that we have a proper JWT token (should start with eyJ)
-      if (!userJWT.startsWith('eyJ')) {
-        console.warn("⚠️ User JWT doesn't appear to be a valid JWT token");
+      // Validate that we have proper JWT tokens (should start with eyJ)
+      if (!identityToken.startsWith('eyJ')) {
+        console.warn("⚠️ Identity token doesn't appear to be a valid JWT token");
+      }
+      if (!accessToken.startsWith('eyJ')) {
+        console.warn("⚠️ Access token doesn't appear to be a valid JWT token");
       }
       
-      // Try to decode JWT payload (without verification)
+      // Try to decode JWT payloads (without verification)
       try {
-        const parts = userJWT.split('.');
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]));
-          console.log("🔍 JWT payload:", payload);
-          console.log("🔍 JWT subject:", payload.sub);
-          console.log("🔍 JWT audience:", payload.aud);
-          console.log("🔍 JWT issuer:", payload.iss);
-          console.log("🔍 JWT expires:", new Date(payload.exp * 1000));
+        const identityParts = identityToken.split('.');
+        if (identityParts.length === 3) {
+          const identityPayload = JSON.parse(atob(identityParts[1]));
+          console.log("🔍 Identity JWT payload:", identityPayload);
+          console.log("🔍 Identity JWT subject:", identityPayload.sub);
+          console.log("🔍 Identity JWT audience:", identityPayload.aud);
+          console.log("🔍 Identity JWT issuer:", identityPayload.iss);
+          console.log("🔍 Identity JWT expires:", new Date(identityPayload.exp * 1000));
+        }
+        
+        const accessParts = accessToken.split('.');
+        if (accessParts.length === 3) {
+          const accessPayload = JSON.parse(atob(accessParts[1]));
+          console.log("🔍 Access JWT payload:", accessPayload);
+          console.log("🔍 Access JWT subject:", accessPayload.sub);
+          console.log("🔍 Access JWT audience:", accessPayload.aud);
+          console.log("🔍 Access JWT issuer:", accessPayload.iss);
+          console.log("🔍 Access JWT expires:", new Date(accessPayload.exp * 1000));
         }
       } catch (e) {
         console.warn("⚠️ Could not decode JWT payload:", e);
       }
       
-      console.log("✅ Got user JWT using createPrivyClient, proceeding with send...");
+      console.log("✅ Got both tokens, proceeding with send...");
       
-      // Send user JWT for server-side EIP-7702 signing
-      console.log("🔐 Using server-side EIP-7702 signing with user JWT...");
-      console.log("🔐 User JWT length:", userJWT?.length);
+      // Send both tokens for server-side EIP-7702 signing
+      console.log("🔐 Using server-side EIP-7702 signing with both tokens...");
+      console.log("🔐 Identity token length:", identityToken?.length);
+      console.log("🔐 Access token length:", accessToken?.length);
       
       try {
         const result = await sendPYUSD(
@@ -154,7 +176,8 @@ const SendScreen = () => {
           smartWalletAddress,
           recipientAddress,
           amount,
-          userJWT
+          identityToken,
+          accessToken
         );
 
         console.log("📥 Send result received:", result);
