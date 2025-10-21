@@ -1,21 +1,11 @@
 import React, { useState, useCallback, useEffect } from "react";
-import {
-  Text,
-  TextInput,
-  View,
-  ScrollView,
-  StyleSheet,
-  SafeAreaView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator
-} from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Alert, SafeAreaView as RNSafeAreaView } from "react-native";
+import { YStack, XStack, Text, Button, Input, Card, Separator, ScrollView, Spinner } from "tamagui";
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from "@expo/vector-icons";
 import { usePrivy } from "@privy-io/expo";
 import { getOrCreateSmartWallet } from "@/services/smartWallet";
 import { checkENSAvailability, registerENS, loadProfile as loadProfileData, saveProfile } from "@/services/profileService";
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const ProfileScreen = () => {
   const { user, logout, getAccessToken } = usePrivy();
@@ -36,7 +26,6 @@ export const ProfileScreen = () => {
 
   const userEmail: string | undefined = emailAccount?.address;
   const userWallet: string | undefined = walletAccount?.address;
-  const userId: string | undefined = user?.id;
 
   // Load profile data on mount
   useEffect(() => {
@@ -47,18 +36,15 @@ export const ProfileScreen = () => {
     if (!user) return;
 
     try {
-      // Load profile from AsyncStorage
       const profileData = await loadProfileData(userWallet || '');
 
       if (profileData?.displayName) {
         setDisplayName(profileData.displayName);
       } else if (userEmail) {
-        // Fallback to email prefix if no saved name
         const emailPrefix = userEmail.split('@')[0];
         setDisplayName(emailPrefix);
       }
 
-      // Get smart wallet address
       const token = await getAccessToken();
       if (token && userWallet) {
         const walletData = await getOrCreateSmartWallet(userWallet, token);
@@ -79,13 +65,8 @@ export const ProfileScreen = () => {
 
     setIsSavingProfile(true);
     try {
-      // Save to AsyncStorage
       const token = await getAccessToken();
-      await saveProfile(
-        userWallet || '',
-        { displayName },
-        token || ''
-      );
+      await saveProfile(userWallet || '', { displayName }, token || '');
       Alert.alert("Success", "Display name saved!");
       setIsEditingName(false);
     } catch (error: any) {
@@ -142,9 +123,7 @@ export const ProfileScreen = () => {
 
     try {
       const token = await getAccessToken();
-      if (!token) {
-        throw new Error("Failed to get access token");
-      }
+      if (!token) throw new Error("Failed to get access token");
 
       const result = await registerENS(ensName, userWallet, smartWalletAddress, token);
 
@@ -166,476 +145,369 @@ export const ProfileScreen = () => {
   }, [ensName, userWallet, smartWalletAddress, getAccessToken]);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.greeting}>Profile</Text>
-            <TouchableOpacity onPress={logout} style={styles.logoutButton}>
-              <Ionicons name="log-out-outline" size={20} color="#0070BA" />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.subtitle}>Customize your account</Text>
-        </View>
+    <RNSafeAreaView style={{ flex: 1, backgroundColor: '#0a0e27' }}>
+      <ScrollView flex={1} backgroundColor="#0a0e27">
+        {/* Animated Header with Gradient */}
+        <YStack>
+          <LinearGradient
+            colors={['#0079c1', '#003087', '#0a0e27']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ paddingHorizontal: 10, paddingTop: 20, paddingBottom: 24 }}
+          >
+            <XStack justifyContent="space-between" alignItems="center">
+              <YStack flex={1}>
+                <Text fontSize={32} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" letterSpacing={-1}>
+                  PROFILE
+                </Text>
+                <Text fontSize={14} color="rgba(255,255,255,0.7)" marginTop={4} fontFamily="SpaceMono_400Regular">
+                  &gt; Customize your account_
+                </Text>
+              </YStack>
+              <Button
+                size="$3"
+                circular
+                icon={<Ionicons name="log-out-outline" size={20} color="#0079c1" />}
+                onPress={logout}
+                backgroundColor="rgba(255,255,255,0.9)"
+                borderWidth={1}
+                borderColor="rgba(0,121,193,0.3)"
+                pressStyle={{ scale: 0.95, backgroundColor: "#FFFFFF" }}
+              />
+            </XStack>
+          </LinearGradient>
+        </YStack>
 
-        {/* Avatar Card */}
-        <View style={styles.card}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {displayName ? displayName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase() || "U"}
+        {/* Avatar Card - Glassmorphism */}
+        <YStack marginHorizontal={16} marginTop={20}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 1 }}
+          >
+            <YStack
+              backgroundColor="rgba(10,14,39,0.6)"
+              borderRadius={19}
+              padding={16}
+              borderWidth={1}
+              borderColor="rgba(0,121,193,0.2)"
+              alignItems="center"
+            >
+              <LinearGradient
+                colors={['#0079c1', '#009cde']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  width: 80,
+                  height: 80,
+                  borderRadius: 40,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                  borderWidth: 2,
+                  borderColor: 'rgba(255,255,255,0.2)',
+                }}
+              >
+                <Text fontSize={40} color="#FFFFFF" fontWeight="700" fontFamily="SpaceGrotesk_700Bold">
+                  {displayName ? displayName.charAt(0).toUpperCase() : userEmail?.charAt(0).toUpperCase() || "U"}
+                </Text>
+              </LinearGradient>
+              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                {displayName || "USER"}
               </Text>
-            </View>
-            <Text style={styles.userName}>{displayName || "User"}</Text>
-            {userEmail && <Text style={styles.userEmail}>{userEmail}</Text>}
-          </View>
-        </View>
+              {userEmail && (
+                <Text fontSize={12} color="rgba(255,255,255,0.6)" marginTop={4} fontFamily="SpaceMono_400Regular">
+                  {userEmail}
+                </Text>
+              )}
+            </YStack>
+          </LinearGradient>
+        </YStack>
 
         {/* Display Name Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="person" size={24} color="#0070BA" />
-            <Text style={styles.cardTitle}>Display Name</Text>
-          </View>
-
-          {isEditingName ? (
-            <View>
-              <TextInput
-                style={styles.input}
-                value={displayName}
-                onChangeText={setDisplayName}
-                placeholder="Enter your display name"
-                placeholderTextColor="#9ca3af"
-                autoFocus
-              />
-              <View style={styles.buttonRow}>
-                <TouchableOpacity
-                  style={[styles.button, styles.cancelButton]}
-                  onPress={() => setIsEditingName(false)}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.button, styles.saveButton]}
-                  onPress={handleSaveName}
-                  disabled={isSavingProfile}
-                >
-                  {isSavingProfile ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Save</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View>
-              <View style={styles.displayNameContainer}>
-                <Text style={styles.displayNameText}>
-                  {displayName || "Not set"}
+        <YStack marginHorizontal={16} marginTop={16}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 1 }}
+          >
+            <YStack backgroundColor="rgba(10,14,39,0.6)" borderRadius={19} padding={20} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+              <XStack alignItems="center" marginBottom={12} gap={8}>
+                <Ionicons name="person" size={20} color="#0079c1" />
+                <Text fontSize={16} fontWeight="700" color="#FFFFFF" flex={1} fontFamily="SpaceGrotesk_700Bold">
+                  DISPLAY NAME
                 </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.button, styles.editButton]}
-                onPress={() => setIsEditingName(true)}
-              >
-                <Ionicons name="pencil" size={16} color="#0070BA" />
-                <Text style={styles.editButtonText}>Edit Display Name</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+              </XStack>
+
+              {isEditingName ? (
+                <YStack gap={12}>
+                  <Input
+                    size="$4"
+                    value={displayName}
+                    onChangeText={setDisplayName}
+                    placeholder="Enter your display name"
+                    autoFocus
+                    backgroundColor="rgba(255,255,255,0.05)"
+                    borderColor="rgba(0,121,193,0.3)"
+                    color="#FFFFFF"
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    fontFamily="SpaceMono_400Regular"
+                    focusStyle={{ borderColor: '#0079c1' }}
+                  />
+                  <XStack gap={12}>
+                    <Button
+                      flex={1}
+                      onPress={() => setIsEditingName(false)}
+                      backgroundColor="rgba(255,255,255,0.1)"
+                      borderColor="rgba(255,255,255,0.2)"
+                      borderWidth={1}
+                      pressStyle={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+                    >
+                      <Text color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">Cancel</Text>
+                    </Button>
+                    <Button
+                      flex={1}
+                      onPress={handleSaveName}
+                      disabled={isSavingProfile}
+                      backgroundColor="#0079c1"
+                      borderWidth={1}
+                      borderColor="rgba(255,255,255,0.2)"
+                      pressStyle={{ backgroundColor: '#006ba8' }}
+                    >
+                      {isSavingProfile ? <Spinner color="#FFFFFF" /> : <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">Save</Text>}
+                    </Button>
+                  </XStack>
+                </YStack>
+              ) : (
+                <YStack gap={12}>
+                  <YStack backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={8} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+                    <Text fontSize={15} color="#FFFFFF" fontWeight="500" fontFamily="SpaceMono_400Regular">
+                      {displayName || "[ NOT_SET ]"}
+                    </Text>
+                  </YStack>
+                  <Button
+                    onPress={() => setIsEditingName(true)}
+                    backgroundColor="rgba(0,121,193,0.15)"
+                    borderColor="#0079c1"
+                    borderWidth={1}
+                    icon={<Ionicons name="pencil" size={16} color="#FFFFFF" />}
+                    pressStyle={{ backgroundColor: 'rgba(0,121,193,0.25)' }}
+                  >
+                    <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">EDIT NAME</Text>
+                  </Button>
+                </YStack>
+              )}
+            </YStack>
+          </LinearGradient>
+        </YStack>
 
         {/* ENS Registration Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="globe" size={24} color="#0070BA" />
-            <Text style={styles.cardTitle}>ENS Name</Text>
-          </View>
+        <YStack marginHorizontal={16} marginTop={16}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 1 }}
+          >
+            <YStack backgroundColor="rgba(10,14,39,0.6)" borderRadius={19} padding={20} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+              <XStack alignItems="center" marginBottom={8} gap={8}>
+                <Ionicons name="globe" size={20} color="#0079c1" />
+                <Text fontSize={16} fontWeight="700" color="#FFFFFF" flex={1} fontFamily="SpaceGrotesk_700Bold">
+                  ENS NAME
+                </Text>
+              </XStack>
 
-          <Text style={styles.description}>
-            Register a custom .pyusd.eth name for your wallet
-          </Text>
-
-          <View style={styles.ensInputContainer}>
-            <TextInput
-              style={[styles.input, styles.ensInput]}
-              value={ensName}
-              onChangeText={(text) => {
-                setENSName(text.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-                setENSAvailable(null);
-              }}
-              placeholder="yourname"
-              placeholderTextColor="#9ca3af"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <Text style={styles.ensSuffix}>.pyusd.eth</Text>
-          </View>
-
-          {ensAvailable !== null && (
-            <View style={[
-              styles.availabilityBadge,
-              ensAvailable ? styles.availableBadge : styles.unavailableBadge
-            ]}>
-              <Ionicons
-                name={ensAvailable ? "checkmark-circle" : "close-circle"}
-                size={20}
-                color={ensAvailable ? "#10b981" : "#ef4444"}
-              />
-              <Text style={[
-                styles.availabilityText,
-                ensAvailable ? styles.availableText : styles.unavailableText
-              ]}>
-                {ensAvailable ? "Available!" : "Already taken"}
+              <Text fontSize={12} color="rgba(255,255,255,0.6)" marginBottom={12} fontFamily="SpaceMono_400Regular">
+                &gt; Register custom .pyusd.eth domain
               </Text>
-            </View>
-          )}
 
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.button, styles.checkButton]}
-              onPress={handleCheckENS}
-              disabled={isCheckingENS || !ensName.trim()}
-            >
-              {isCheckingENS ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="search" size={16} color="#fff" />
-                  <Text style={styles.checkButtonText}>Check Availability</Text>
-                </>
+              <XStack alignItems="center" gap={8} marginBottom={12}>
+                <Input
+                  flex={1}
+                  size="$4"
+                  value={ensName}
+                  onChangeText={(text) => {
+                    setENSName(text.toLowerCase().replace(/[^a-z0-9-]/g, ''));
+                    setENSAvailable(null);
+                  }}
+                  placeholder="yourname"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  backgroundColor="rgba(255,255,255,0.05)"
+                  borderColor="rgba(0,121,193,0.3)"
+                  color="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  fontFamily="SpaceMono_400Regular"
+                  focusStyle={{ borderColor: '#0079c1' }}
+                />
+                <Text fontSize={14} color="rgba(255,255,255,0.6)" fontWeight="500" fontFamily="SpaceMono_700Bold">
+                  .pyusd.eth
+                </Text>
+              </XStack>
+
+              {ensAvailable !== null && (
+                <XStack
+                  alignItems="center"
+                  padding={10}
+                  borderRadius={8}
+                  gap={8}
+                  marginBottom={12}
+                  backgroundColor={ensAvailable ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
+                  borderWidth={1}
+                  borderColor={ensAvailable ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}
+                >
+                  <Ionicons
+                    name={ensAvailable ? "checkmark-circle" : "close-circle"}
+                    size={20}
+                    color={ensAvailable ? "#10b981" : "#ef4444"}
+                  />
+                  <Text fontSize={13} fontWeight="700" color={ensAvailable ? "#10b981" : "#ef4444"} fontFamily="SpaceGrotesk_700Bold">
+                    {ensAvailable ? "✓ AVAILABLE" : "✗ TAKEN"}
+                  </Text>
+                </XStack>
               )}
-            </TouchableOpacity>
 
-            {ensAvailable && (
-              <TouchableOpacity
-                style={[styles.button, styles.registerButton]}
-                onPress={handleRegisterENS}
-                disabled={isRegisteringENS}
-              >
-                {isRegisteringENS ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <>
-                    <Ionicons name="sparkles" size={16} color="#fff" />
-                    <Text style={styles.registerButtonText}>Register</Text>
-                  </>
+              <XStack gap={12} marginBottom={12}>
+                <Button
+                  flex={1}
+                  onPress={handleCheckENS}
+                  disabled={isCheckingENS || !ensName.trim()}
+                  backgroundColor="#0079c1"
+                  borderWidth={1}
+                  borderColor="rgba(255,255,255,0.2)"
+                  icon={isCheckingENS ? undefined : <Ionicons name="search" size={16} color="#FFFFFF" />}
+                  pressStyle={{ backgroundColor: '#006ba8' }}
+                  opacity={isCheckingENS || !ensName.trim() ? 0.5 : 1}
+                >
+                  {isCheckingENS ? (
+                    <Spinner color="#FFFFFF" />
+                  ) : (
+                    <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">CHECK</Text>
+                  )}
+                </Button>
+
+                {ensAvailable && (
+                  <Button
+                    flex={1}
+                    onPress={handleRegisterENS}
+                    disabled={isRegisteringENS}
+                    backgroundColor="#10b981"
+                    borderWidth={1}
+                    borderColor="rgba(255,255,255,0.2)"
+                    icon={isRegisteringENS ? undefined : <Ionicons name="sparkles" size={16} color="#FFFFFF" />}
+                    pressStyle={{ backgroundColor: '#059669' }}
+                  >
+                    {isRegisteringENS ? (
+                      <Spinner color="#FFFFFF" />
+                    ) : (
+                      <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">REGISTER</Text>
+                    )}
+                  </Button>
                 )}
-              </TouchableOpacity>
-            )}
-          </View>
+              </XStack>
 
-          <View style={styles.infoBox}>
-            <Ionicons name="information-circle" size={20} color="#0070BA" />
-            <Text style={styles.infoText}>
-              Registration is gas-free! Your smart wallet will handle the transaction.
-            </Text>
-          </View>
-        </View>
+              <XStack
+                alignItems="flex-start"
+                backgroundColor="rgba(0,121,193,0.1)"
+                padding={12}
+                borderRadius={8}
+                gap={8}
+                borderWidth={1}
+                borderColor="rgba(0,121,193,0.2)"
+              >
+                <Ionicons name="information-circle" size={18} color="#0079c1" />
+                <Text flex={1} fontSize={11} color="rgba(255,255,255,0.7)" lineHeight={16} fontFamily="SpaceMono_400Regular">
+                  Gas-free registration via smart wallet
+                </Text>
+              </XStack>
+            </YStack>
+          </LinearGradient>
+        </YStack>
 
         {/* Wallet Info Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="wallet" size={24} color="#0070BA" />
-            <Text style={styles.cardTitle}>Wallet Addresses</Text>
-          </View>
+        <YStack marginHorizontal={16} marginTop={16}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 1 }}
+          >
+            <YStack backgroundColor="rgba(10,14,39,0.6)" borderRadius={19} padding={20} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+              <XStack alignItems="center" marginBottom={16} gap={8}>
+                <Ionicons name="wallet" size={20} color="#0079c1" />
+                <Text fontSize={16} fontWeight="700" color="#FFFFFF" flex={1} fontFamily="SpaceGrotesk_700Bold">
+                  WALLET ADDRESSES
+                </Text>
+              </XStack>
 
-          {userWallet && (
-            <View style={styles.addressRow}>
-              <Text style={styles.addressLabel}>EOA Address</Text>
-              <Text style={styles.addressText} numberOfLines={1}>
-                {userWallet.slice(0, 10)}...{userWallet.slice(-8)}
-              </Text>
-            </View>
-          )}
+              {userWallet && (
+                <>
+                  <YStack marginBottom={12}>
+                    <Text fontSize={11} color="rgba(255,255,255,0.5)" marginBottom={6} fontWeight="500" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={1}>
+                      EOA ADDRESS
+                    </Text>
+                    <YStack backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={8} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+                      <Text fontSize={13} color="#FFFFFF" fontFamily="SpaceMono_400Regular">
+                        {userWallet.slice(0, 10)}...{userWallet.slice(-8)}
+                      </Text>
+                    </YStack>
+                  </YStack>
+                </>
+              )}
 
-          {smartWalletAddress && (
-            <View style={styles.addressRow}>
-              <Text style={styles.addressLabel}>Smart Wallet</Text>
-              <Text style={styles.addressText} numberOfLines={1}>
-                {smartWalletAddress.slice(0, 10)}...{smartWalletAddress.slice(-8)}
-              </Text>
-            </View>
-          )}
-        </View>
+              {smartWalletAddress && (
+                <YStack>
+                  <Text fontSize={11} color="rgba(255,255,255,0.5)" marginBottom={6} fontWeight="500" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={1}>
+                    SMART WALLET
+                  </Text>
+                  <YStack backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={8} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+                    <Text fontSize={13} color="#FFFFFF" fontFamily="SpaceMono_400Regular">
+                      {smartWalletAddress.slice(0, 10)}...{smartWalletAddress.slice(-8)}
+                    </Text>
+                  </YStack>
+                </YStack>
+              )}
+            </YStack>
+          </LinearGradient>
+        </YStack>
 
         {/* Account Actions */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="settings" size={24} color="#0070BA" />
-            <Text style={styles.cardTitle}>Account</Text>
-          </View>
+        <YStack marginHorizontal={16} marginTop={16} marginBottom={24}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 1 }}
+          >
+            <YStack backgroundColor="rgba(10,14,39,0.6)" borderRadius={19} padding={20} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+              <XStack alignItems="center" marginBottom={12} gap={8}>
+                <Ionicons name="settings" size={20} color="#0079c1" />
+                <Text fontSize={16} fontWeight="700" color="#FFFFFF" flex={1} fontFamily="SpaceGrotesk_700Bold">
+                  ACCOUNT
+                </Text>
+              </XStack>
 
-          <TouchableOpacity style={styles.actionButton} onPress={logout}>
-            <Ionicons name="log-out" size={20} color="#ef4444" />
-            <Text style={styles.actionButtonText}>Logout</Text>
-            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.bottomSpacing} />
+              <Button
+                onPress={logout}
+                backgroundColor="rgba(239, 68, 68, 0.15)"
+                borderColor="rgba(239, 68, 68, 0.3)"
+                borderWidth={1}
+                pressStyle={{ backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
+                icon={<Ionicons name="log-out" size={18} color="#ef4444" />}
+                justifyContent="flex-start"
+                paddingHorizontal={16}
+              >
+                <Text color="#FFFFFF" flex={1} textAlign="left" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">
+                  LOGOUT
+                </Text>
+                <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.4)" />
+              </Button>
+            </YStack>
+          </LinearGradient>
+        </YStack>
       </ScrollView>
-    </SafeAreaView>
+    </RNSafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F9FC',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 16,
-    backgroundColor: '#FFFFFF',
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  greeting: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1E1E1E',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  logoutButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: '#F0F7FF',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginHorizontal: 20,
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 8,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1f2937',
-    flex: 1,
-  },
-  avatarContainer: {
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#0070BA',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  userName: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1f2937',
-    marginBottom: 4,
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  displayNameContainer: {
-    backgroundColor: '#f3f4f6',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-  },
-  displayNameText: {
-    fontSize: 16,
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  description: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  ensInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  ensInput: {
-    flex: 1,
-    marginBottom: 0,
-    marginRight: 8,
-  },
-  ensSuffix: {
-    fontSize: 16,
-    color: '#6b7280',
-    fontWeight: '500',
-  },
-  availabilityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
-    gap: 8,
-  },
-  availableBadge: {
-    backgroundColor: '#d1fae5',
-  },
-  unavailableBadge: {
-    backgroundColor: '#fee2e2',
-  },
-  availabilityText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  availableText: {
-    color: '#10b981',
-  },
-  unavailableText: {
-    color: '#ef4444',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  button: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 6,
-  },
-  editButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#0070BA',
-  },
-  editButtonText: {
-    color: '#0070BA',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  cancelButtonText: {
-    color: '#6b7280',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  saveButton: {
-    backgroundColor: '#0070BA',
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  checkButton: {
-    backgroundColor: '#0070BA',
-  },
-  checkButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  registerButton: {
-    backgroundColor: '#10b981',
-  },
-  registerButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#eff6ff',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 4,
-    gap: 8,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: 12,
-    color: '#0070BA',
-    lineHeight: 18,
-  },
-  addressRow: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  addressLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  addressText: {
-    fontSize: 14,
-    color: '#1f2937',
-    fontFamily: 'monospace',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-  },
-  actionButtonText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  bottomSpacing: {
-    height: 40,
-  },
-});
