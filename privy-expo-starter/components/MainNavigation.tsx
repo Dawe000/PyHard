@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { 
-  Text, 
-  View, 
-  StyleSheet, 
+import {
+  Text,
+  View,
+  StyleSheet,
   TouchableOpacity,
   SafeAreaView
 } from "react-native";
@@ -11,8 +11,9 @@ import { BalanceScreen } from "./BalanceScreen";
 import { TransactionsScreen } from "./TransactionsScreen";
 import { SubAccountsScreen } from "./SubAccountsScreen";
 import SendScreen from "./SendScreen";
+import { ProfileScreen } from "./ProfileScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'send';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -25,8 +26,8 @@ export const MainNavigation = () => {
         return <TransactionsScreen />;
       case 'subaccounts':
         return <SubAccountsScreen />;
-      case 'send':
-        return <SendScreen />;
+      case 'profile':
+        return <ProfileScreen />;
       default:
         return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
     }
@@ -40,6 +41,8 @@ export const MainNavigation = () => {
         return 'receipt';
       case 'subaccounts':
         return 'people';
+      case 'profile':
+        return 'person-circle';
       default:
         return 'wallet';
     }
@@ -53,6 +56,8 @@ export const MainNavigation = () => {
         return 'Activity';
       case 'subaccounts':
         return 'Sub-Accounts';
+      case 'profile':
+        return 'Profile';
       default:
         return 'Balance';
     }
@@ -103,16 +108,33 @@ export const MainNavigation = () => {
           style={[styles.tab, activeTab === 'subaccounts' && styles.activeTab]}
           onPress={() => setActiveTab('subaccounts')}
         >
-          <Ionicons 
-            name={getTabIcon('subaccounts')} 
-            size={24} 
-            color={activeTab === 'subaccounts' ? '#0070BA' : '#8E8E93'} 
+          <Ionicons
+            name={getTabIcon('subaccounts')}
+            size={24}
+            color={activeTab === 'subaccounts' ? '#0070BA' : '#8E8E93'}
           />
           <Text style={[
             styles.tabLabel,
             activeTab === 'subaccounts' && styles.activeTabLabel
           ]}>
             {getTabLabel('subaccounts')}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
+          onPress={() => setActiveTab('profile')}
+        >
+          <Ionicons
+            name={getTabIcon('profile')}
+            size={24}
+            color={activeTab === 'profile' ? '#0070BA' : '#8E8E93'}
+          />
+          <Text style={[
+            styles.tabLabel,
+            activeTab === 'profile' && styles.activeTabLabel
+          ]}>
+            {getTabLabel('profile')}
           </Text>
         </TouchableOpacity>
       </View>
