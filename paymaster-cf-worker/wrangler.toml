@@ -11,9 +11,6 @@ EIP7702_PAYMASTER_ADDRESS = "0x946e4e70b88e0dbfbfc2e2f8fd7c8eaacb3636f4" # EIP77
 SMART_WALLET_FACTORY_ADDRESS = "0x1f33B3eDaE1A462A2EAFaD8531DdbE6AB72f2bef" # SmartWalletFactory contract address (Arbitrum Sepolia)
 PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1" # Real PYUSD token address (Arbitrum Sepolia)
 RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc" # Arbitrum Sepolia RPC
-PRIVY_APP_ID = "cmgtb4vg702vqld0da5wktriq"
-PRIVY_CLIENT_ID = "client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9"
-# PRIVY_APP_SECRET is now in .dev.vars for security
 
 [env.production]
 name = "paymaster-cf-worker-prod"

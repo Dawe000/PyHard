@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { usePrivy, useEmbeddedEthereumWallet, useIdentityToken } from "@privy-io/expo";
+import { usePrivy, useEmbeddedEthereumWallet, useAuthorizationSignature } from "@privy-io/expo";
 import { getUserEmbeddedEthereumWallet } from "@privy-io/expo";
 import { createPrivyClient } from "@privy-io/expo";
 import { sendPYUSD } from "@/services/sendService";
@@ -27,9 +27,21 @@ const SendScreen = () => {
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
 
   const { user } = usePrivy();
-  const { wallets } = useEmbeddedEthereumWallet();
-  const { getIdentityToken } = useIdentityToken();
+  const { wallets, ready } = useEmbeddedEthereumWallet();
+  const { generateAuthorizationSignature } = useAuthorizationSignature();
   const account = getUserEmbeddedEthereumWallet(user);
+  
+  // Debug wallet information
+  console.log("🔍 useEmbeddedEthereumWallet debug:");
+  console.log("🔍 - ready:", ready);
+  console.log("🔍 - wallets:", wallets);
+  console.log("🔍 - user:", user);
+  console.log("🔍 - account:", account);
+  
+  // Debug useAuthorizationSignature hook
+  console.log("🔍 useAuthorizationSignature debug:");
+  console.log("🔍 - generateAuthorizationSignature:", generateAuthorizationSignature);
+  console.log("🔍 - generateAuthorizationSignature type:", typeof generateAuthorizationSignature);
 
   // Load SmartWallet address on mount
   useEffect(() => {
@@ -75,6 +87,8 @@ const SendScreen = () => {
       return;
     }
 
+    // Note: We don't need to wait for the wallet hook to be ready since we have the wallet ID from the account object
+
     if (!smartWalletAddress) {
       console.log("❌ Validation failed: SmartWallet not ready");
       Alert.alert("Error", "SmartWallet not ready. Please wait and try again.");
@@ -103,90 +117,110 @@ const SendScreen = () => {
       console.log("  - Recipient Address:", recipientAddress);
       console.log("  - Amount:", amount);
 
-      // Get both identity token and access token for EIP-7702 authorization
-      console.log("📝 Getting user tokens for EIP-7702 authorization...");
+      // Step 1: Get wallet ID from account object (most reliable)
+      console.log("📝 Getting wallet ID for EIP-7702 authorization...");
+      console.log("🔍 Account object:", account);
       
-      // Get identity token for user verification
-      const identityToken = await getIdentityToken();
-      if (!identityToken) {
-        throw new Error("Missing identity token - please ensure you're logged in");
+      if (!account?.id) {
+        console.log("❌ No wallet ID found in account object");
+        console.log("🔍 Account object keys:", Object.keys(account || {}));
+        throw new Error("No wallet ID found in account - please ensure you have a connected wallet");
       }
       
-      // Get access token for authorization context
-      const privy = createPrivyClient({
-        appId: 'cmgtb4vg702vqld0da5wktriq', // From app.json
-        clientId: 'client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9' // From wrangler.toml
-      });
-      
-      const accessToken = await privy.getAccessToken();
-      if (!accessToken) {
-        throw new Error("Missing access token - please ensure you're logged in");
-      }
-      
-      console.log("🔍 Identity token type:", typeof identityToken);
-      console.log("🔍 Identity token length:", identityToken?.length);
-      console.log("🔍 Identity token preview:", identityToken?.substring(0, 50) + "...");
-      console.log("🔍 Access token type:", typeof accessToken);
-      console.log("🔍 Access token length:", accessToken?.length);
-      console.log("🔍 Access token preview:", accessToken?.substring(0, 50) + "...");
-      
-      // Validate that we have proper JWT tokens (should start with eyJ)
-      if (!identityToken.startsWith('eyJ')) {
-        console.warn("⚠️ Identity token doesn't appear to be a valid JWT token");
-      }
-      if (!accessToken.startsWith('eyJ')) {
-        console.warn("⚠️ Access token doesn't appear to be a valid JWT token");
-      }
-      
-      // Try to decode JWT payloads (without verification)
-      try {
-        const identityParts = identityToken.split('.');
-        if (identityParts.length === 3) {
-          const identityPayload = JSON.parse(atob(identityParts[1]));
-          console.log("🔍 Identity JWT payload:", identityPayload);
-          console.log("🔍 Identity JWT subject:", identityPayload.sub);
-          console.log("🔍 Identity JWT audience:", identityPayload.aud);
-          console.log("🔍 Identity JWT issuer:", identityPayload.iss);
-          console.log("🔍 Identity JWT expires:", new Date(identityPayload.exp * 1000));
+      const walletId = account.id;
+      console.log("✅ Found wallet ID from account:", walletId);
+
+    // Step 2: Get EIP-7702 authorization using REST API approach
+    console.log("🔐 Getting EIP-7702 authorization using REST API...");
+    
+    const EOA_DELEGATION_ADDRESS = "0x0ef2789981b7a7a52e21320a21afcb4c31903883";
+    const CHAIN_ID = 421614;
+    
+    // Build the request payload for the Privy API
+    const input = {
+      version: 1 as const,
+      url: `https://api.privy.io/v1/wallets/${walletId}/rpc`,
+      method: 'POST' as const,
+      headers: {
+        'privy-app-id': 'cmgtb4vg702vqld0da5wktriq',
+      },
+      body: {
+        method: 'eth_sign7702Authorization',
+        params: {
+          contract: EOA_DELEGATION_ADDRESS,
+          chain_id: CHAIN_ID,
+          nonce: 0
         }
-        
-        const accessParts = accessToken.split('.');
-        if (accessParts.length === 3) {
-          const accessPayload = JSON.parse(atob(accessParts[1]));
-          console.log("🔍 Access JWT payload:", accessPayload);
-          console.log("🔍 Access JWT subject:", accessPayload.sub);
-          console.log("🔍 Access JWT audience:", accessPayload.aud);
-          console.log("🔍 Access JWT issuer:", accessPayload.iss);
-          console.log("🔍 Access JWT expires:", new Date(accessPayload.exp * 1000));
-        }
-      } catch (e) {
-        console.warn("⚠️ Could not decode JWT payload:", e);
       }
+    };
+    
+    console.log("🔍 Authorization request payload:", JSON.stringify(input, null, 2));
+    
+    // Step 3: Generate Privy authorization signature
+    console.log("🔐 Generating Privy authorization signature...");
+    const authorizationSignatureResult = await generateAuthorizationSignature(input);
+    console.log("🔍 Authorization signature result:", authorizationSignatureResult);
+    
+    // Extract the signature string from the result object
+    let authorizationSignature: string;
+    if (typeof authorizationSignatureResult === 'string') {
+      authorizationSignature = authorizationSignatureResult;
+    } else if (typeof authorizationSignatureResult === 'object' && authorizationSignatureResult.signature) {
+      authorizationSignature = authorizationSignatureResult.signature;
+    } else {
+      throw new Error(`Unexpected authorization signature format: ${JSON.stringify(authorizationSignatureResult)}`);
+    }
+    
+    console.log("✅ Privy authorization signature extracted:", authorizationSignature);
+    
+    // Step 4: Get access token for the API call
+    const privy = createPrivyClient({
+      appId: 'cmgtb4vg702vqld0da5wktriq',
+      clientId: 'client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9'
+    });
+    const accessToken = await privy.getAccessToken();
+    
+    // Step 5: Call Privy API to get EIP-7702 authorization
+    console.log("🌐 Calling Privy API to get EIP-7702 authorization...");
+    const response = await fetch(input.url, {
+      method: input.method,
+      headers: {
+        ...input.headers,
+        'Authorization': `Bearer ${accessToken}`,
+        'privy-authorization-signature': authorizationSignature,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(input.body)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Privy API error: ${response.status} ${errorText}`);
+    }
+    
+    const result = await response.json();
+    const eip7702Authorization = result.data.authorization;
+    console.log("✅ EIP-7702 authorization received:", JSON.stringify(eip7702Authorization, null, 2));
       
-      console.log("✅ Got both tokens, proceeding with send...");
-      
-      // Send both tokens for server-side EIP-7702 signing
-      console.log("🔐 Using server-side EIP-7702 signing with both tokens...");
-      console.log("🔐 Identity token length:", identityToken?.length);
-      console.log("🔐 Access token length:", accessToken?.length);
+      // Step 3: Send the signed authorization to CF Worker for transaction submission
+      console.log("🚀 Sending transaction to CF Worker...");
       
       try {
-        const result = await sendPYUSD(
+        const txResult = await sendPYUSD(
           account.address,
           smartWalletAddress,
           recipientAddress,
           amount,
-          identityToken,
-          accessToken
+          eip7702Authorization
         );
 
-        console.log("📥 Send result received:", result);
+        console.log("📥 Send result received:", txResult);
 
-        if (result.success) {
+        if (txResult.success) {
           console.log("✅ Send successful!");
           Alert.alert(
             "Success!",
-            `Sent ${amount} PYUSD to ${recipientAddress.slice(0, 10)}...\n\nTransaction: ${result.transactionHash?.slice(0, 10)}...`,
+            `Sent ${amount} PYUSD to ${recipientAddress.slice(0, 10)}...\n\nTransaction: ${txResult.transactionHash?.slice(0, 10)}...`,
             [
               {
                 text: "OK",
@@ -198,8 +232,8 @@ const SendScreen = () => {
             ]
           );
         } else {
-          console.log("❌ Send failed:", result.error);
-          Alert.alert("Error", result.error || "Failed to send PYUSD");
+          console.log("❌ Send failed:", txResult.error);
+          Alert.alert("Error", txResult.error || "Failed to send PYUSD");
         }
       } catch (authError: any) {
         console.error("❌ EIP-7702 authorization signing failed:", authError);
