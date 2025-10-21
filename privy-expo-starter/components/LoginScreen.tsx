@@ -1,70 +1,178 @@
 import React from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  SafeAreaView, 
+import {
+  StyleSheet,
+  SafeAreaView,
   TouchableOpacity,
-  Dimensions 
 } from "react-native";
 import { useLogin } from "@privy-io/expo/ui";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-
-const { width, height } = Dimensions.get('window');
+import { YStack, XStack, Text } from "tamagui";
 
 export default function LoginScreen() {
   const { login } = useLogin();
 
   const handleLogin = () => {
-    login({ loginMethods: ["email"] });
+    login({
+      loginMethods: ["email"],
+      appearance: {
+        theme: "dark",
+        accentColor: "#0079c1",
+        borderRadius: "large",
+        logo: undefined,
+      }
+    });
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#667eea', '#764ba2']}
+        colors={['#0a0e27', '#001133', '#0a0e27']}
         style={styles.gradient}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <View style={styles.content}>
+        <YStack flex={1} justifyContent="space-between" paddingHorizontal={24} paddingVertical={40}>
           {/* Header */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Ionicons name="wallet" size={60} color="#fff" />
-            </View>
-            <Text style={styles.title}>Web3 Wallet</Text>
-            <Text style={styles.subtitle}>
-              Secure, fast, and easy cryptocurrency management
+          <YStack alignItems="center" marginTop={60}>
+            <LinearGradient
+              colors={['rgba(0,121,193,0.3)', 'rgba(0,48,135,0.2)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 50, padding: 2, marginBottom: 32 }}
+            >
+              <YStack
+                width={100}
+                height={100}
+                borderRadius={50}
+                backgroundColor="rgba(10,14,39,0.8)"
+                justifyContent="center"
+                alignItems="center"
+                borderWidth={1}
+                borderColor="rgba(0,121,193,0.3)"
+              >
+                <Ionicons name="wallet" size={50} color="#0079c1" />
+              </YStack>
+            </LinearGradient>
+
+            <Text fontSize={40} fontWeight="700" color="#FFFFFF" marginBottom={16} textAlign="center" fontFamily="SpaceGrotesk_700Bold" letterSpacing={2}>
+              PYUSD WALLET
             </Text>
-          </View>
+            <Text fontSize={14} color="rgba(255,255,255,0.6)" textAlign="center" lineHeight={22} paddingHorizontal={20} fontFamily="SpaceMono_400Regular">
+              &gt; Secure, fast, and easy PYUSD management
+            </Text>
+            <Text fontSize={14} color="rgba(255,255,255,0.6)" textAlign="center" lineHeight={22} paddingHorizontal={20} fontFamily="SpaceMono_400Regular" marginTop={8}>
+              &gt; Powered by EIP-7702 & Smart Wallets
+            </Text>
+          </YStack>
 
           {/* Login Button */}
-          <View style={styles.loginContainer}>
+          <YStack alignItems="center" gap={24}>
             <TouchableOpacity
-              style={styles.loginButton}
+              style={{ width: '100%', maxWidth: 300 }}
               onPress={handleLogin}
             >
-              <Ionicons name="log-in" size={24} color="#fff" />
-              <Text style={styles.buttonText}>Get Started</Text>
+              <LinearGradient
+                colors={['rgba(0,121,193,0.8)', 'rgba(0,48,135,0.8)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ borderRadius: 16, padding: 2 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={14}
+                  paddingVertical={18}
+                  paddingHorizontal={32}
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.5)"
+                >
+                  <XStack alignItems="center" justifyContent="center" gap={12}>
+                    <Ionicons name="log-in" size={24} color="#0079c1" />
+                    <Text fontSize={18} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1}>
+                      GET STARTED
+                    </Text>
+                  </XStack>
+                </YStack>
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
+
+            <Text fontSize={12} color="rgba(255,255,255,0.4)" textAlign="center" fontFamily="SpaceMono_400Regular">
+              &gt; Sign in with email to continue
+            </Text>
+          </YStack>
 
           {/* Features */}
-          <View style={styles.features}>
-            <View style={styles.feature}>
-              <Ionicons name="shield-checkmark" size={20} color="#fff" />
-              <Text style={styles.featureText}>Secure</Text>
-            </View>
-            <View style={styles.feature}>
-              <Ionicons name="flash" size={20} color="#fff" />
-              <Text style={styles.featureText}>Fast</Text>
-            </View>
-            <View style={styles.feature}>
-              <Ionicons name="globe" size={20} color="#fff" />
-              <Text style={styles.featureText}>Multi-Chain</Text>
-            </View>
-          </View>
-        </View>
+          <XStack justifyContent="space-around" alignItems="center" marginBottom={20} paddingHorizontal={8}>
+            <YStack alignItems="center" gap={12}>
+              <LinearGradient
+                colors={['rgba(0,121,193,0.2)', 'rgba(0,121,193,0.1)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 12, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={11}
+                  padding={16}
+                  alignItems="center"
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="shield-checkmark" size={24} color="#34C759" />
+                </YStack>
+              </LinearGradient>
+              <Text fontSize={11} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                SECURE
+              </Text>
+            </YStack>
+
+            <YStack alignItems="center" gap={12}>
+              <LinearGradient
+                colors={['rgba(0,121,193,0.2)', 'rgba(0,121,193,0.1)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 12, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={11}
+                  padding={16}
+                  alignItems="center"
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="flash" size={24} color="#FFB800" />
+                </YStack>
+              </LinearGradient>
+              <Text fontSize={11} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                FAST
+              </Text>
+            </YStack>
+
+            <YStack alignItems="center" gap={12}>
+              <LinearGradient
+                colors={['rgba(0,121,193,0.2)', 'rgba(0,121,193,0.1)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 12, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={11}
+                  padding={16}
+                  alignItems="center"
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="globe" size={24} color="#0079c1" />
+                </YStack>
+              </LinearGradient>
+              <Text fontSize={11} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                WEB3
+              </Text>
+            </YStack>
+          </XStack>
+        </YStack>
       </LinearGradient>
     </SafeAreaView>
   );
@@ -73,75 +181,9 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0e27',
   },
   gradient: {
     flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 60,
-  },
-  logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 20,
-  },
-  loginContainer: {
-    alignItems: 'center',
-  },
-  loginButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    gap: 12,
-    backgroundColor: '#6366f1',
-    minWidth: 200,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  features: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  feature: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  featureText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontWeight: '500',
   },
 });

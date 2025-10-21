@@ -1,9 +1,7 @@
 import React, { useState } from "react";
-import { 
-  Text, 
-  View, 
-  StyleSheet, 
-  SafeAreaView, 
+import {
+  StyleSheet,
+  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Alert,
@@ -11,6 +9,8 @@ import {
   Modal
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { YStack, XStack, Text } from "tamagui";
+import { LinearGradient } from "expo-linear-gradient";
 
 export const SubAccountsScreen = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -43,18 +43,6 @@ export const SubAccountsScreen = () => {
       status: 'active',
       childEOA: '0x8a9b...742d'
     },
-    {
-      id: '3',
-      name: 'Emergency Fund',
-      type: 'saver',
-      balance: '500.00',
-      spendingLimit: '1000.00',
-      spentThisPeriod: '0.00',
-      periodStart: '2024-01-01',
-      periodDuration: '90 days',
-      status: 'paused',
-      childEOA: '0x9abc...def0'
-    }
   ]);
 
   const getAccountTypeIcon = (type: string) => {
@@ -71,7 +59,7 @@ export const SubAccountsScreen = () => {
   const getAccountTypeColor = (type: string) => {
     switch (type) {
       case 'saver':
-        return '#0070BA';
+        return '#0079c1';
       case 'sub_account':
         return '#34C759';
       default:
@@ -118,113 +106,197 @@ export const SubAccountsScreen = () => {
   };
 
   const renderSubAccount = (account: any) => (
-    <TouchableOpacity 
-      key={account.id} 
-      style={styles.accountCard}
+    <TouchableOpacity
+      key={account.id}
       onPress={() => Alert.alert("Account Details", `Name: ${account.name}\nType: ${account.type}\nBalance: $${account.balance}`)}
     >
-      <View style={styles.accountHeader}>
-        <View style={styles.accountLeft}>
-          <View style={[styles.accountIcon, { backgroundColor: getAccountTypeColor(account.type) + '20' }]}>
-            <Ionicons 
-              name={getAccountTypeIcon(account.type)} 
-              size={24} 
-              color={getAccountTypeColor(account.type)} 
-            />
-          </View>
-          <View style={styles.accountInfo}>
-            <Text style={styles.accountName}>{account.name}</Text>
-            <Text style={styles.accountType}>
-              {account.type === 'saver' ? 'Saver' : 'Sub Account'}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: 16, padding: 1, marginBottom: 16 }}
+      >
+        <YStack
+          backgroundColor="rgba(10,14,39,0.6)"
+          borderRadius={15}
+          padding={20}
+          borderWidth={1}
+          borderColor="rgba(0,121,193,0.2)"
+        >
+          {/* Header */}
+          <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
+            <XStack alignItems="center" gap={12} flex={1}>
+              <YStack
+                width={48}
+                height={48}
+                borderRadius={24}
+                backgroundColor={getAccountTypeColor(account.type) + '20'}
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons
+                  name={getAccountTypeIcon(account.type)}
+                  size={24}
+                  color={getAccountTypeColor(account.type)}
+                />
+              </YStack>
+              <YStack flex={1}>
+                <Text fontSize={16} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={4}>
+                  {account.name.toUpperCase()}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                  &gt; {account.type === 'saver' ? 'Saver' : 'Sub Account'}
+                </Text>
+              </YStack>
+            </XStack>
+            <YStack backgroundColor={getStatusColor(account.status) + '20'} paddingHorizontal={12} paddingVertical={6} borderRadius={16}>
+              <Text fontSize={10} fontWeight="600" color={getStatusColor(account.status)} fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                {account.status.toUpperCase()}
+              </Text>
+            </YStack>
+          </XStack>
+
+          {/* Balance */}
+          <YStack marginBottom={16} backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={12}>
+            <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={4}>
+              AVAILABLE BALANCE
             </Text>
-          </View>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(account.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(account.status) }]}>
-            {account.status}
-          </Text>
-        </View>
-      </View>
+            <Text fontSize={28} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+              ${account.balance}
+            </Text>
+          </YStack>
 
-      <View style={styles.accountBalance}>
-        <Text style={styles.balanceLabel}>Available Balance</Text>
-        <Text style={styles.balanceAmount}>${account.balance}</Text>
-      </View>
+          {/* Details */}
+          <YStack gap={8} marginBottom={16}>
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                &gt; Spending Limit
+              </Text>
+              <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                ${account.spendingLimit}
+              </Text>
+            </XStack>
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                &gt; Spent This Period
+              </Text>
+              <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                ${account.spentThisPeriod}
+              </Text>
+            </XStack>
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                &gt; Period
+              </Text>
+              <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                {account.periodDuration}
+              </Text>
+            </XStack>
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                &gt; Child Wallet
+              </Text>
+              <Text fontSize={12} fontWeight="600" color="#0079c1" fontFamily="SpaceMono_400Regular">
+                {account.childEOA}
+              </Text>
+            </XStack>
+          </YStack>
 
-      <View style={styles.accountDetails}>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Spending Limit</Text>
-          <Text style={styles.detailValue}>${account.spendingLimit}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Spent This Period</Text>
-          <Text style={styles.detailValue}>${account.spentThisPeriod}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Period</Text>
-          <Text style={styles.detailValue}>{account.periodDuration}</Text>
-        </View>
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Child Wallet</Text>
-          <Text style={styles.detailValue}>{account.childEOA}</Text>
-        </View>
-      </View>
-
-      <View style={styles.accountActions}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => Alert.alert("Coming Soon", "Manage feature coming soon!")}
-        >
-          <Ionicons name="settings-outline" size={16} color="#0070BA" />
-          <Text style={styles.actionButtonText}>Manage</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => Alert.alert("Coming Soon", "Fund feature coming soon!")}
-        >
-          <Ionicons name="add-outline" size={16} color="#34C759" />
-          <Text style={styles.actionButtonText}>Fund</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => Alert.alert("Coming Soon", "View transactions coming soon!")}
-        >
-          <Ionicons name="list-outline" size={16} color="#8E8E93" />
-          <Text style={styles.actionButtonText}>History</Text>
-        </TouchableOpacity>
-      </View>
+          {/* Actions */}
+          <XStack gap={8} justifyContent="space-between">
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => Alert.alert("Coming Soon", "Manage feature coming soon!")}
+            >
+              <YStack backgroundColor="rgba(0,121,193,0.15)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
+                <XStack alignItems="center" gap={6}>
+                  <Ionicons name="settings-outline" size={16} color="#0079c1" />
+                  <Text fontSize={11} fontWeight="600" color="#0079c1" fontFamily="SpaceGrotesk_600SemiBold">
+                    MANAGE
+                  </Text>
+                </XStack>
+              </YStack>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => Alert.alert("Coming Soon", "Fund feature coming soon!")}
+            >
+              <YStack backgroundColor="rgba(52,199,89,0.15)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
+                <XStack alignItems="center" gap={6}>
+                  <Ionicons name="add-outline" size={16} color="#34C759" />
+                  <Text fontSize={11} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold">
+                    FUND
+                  </Text>
+                </XStack>
+              </YStack>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => Alert.alert("Coming Soon", "View transactions coming soon!")}
+            >
+              <YStack backgroundColor="rgba(255,255,255,0.1)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
+                <XStack alignItems="center" gap={6}>
+                  <Ionicons name="list-outline" size={16} color="rgba(255,255,255,0.7)" />
+                  <Text fontSize={11} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold">
+                    HISTORY
+                  </Text>
+                </XStack>
+              </YStack>
+            </TouchableOpacity>
+          </XStack>
+        </YStack>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Sub-Accounts</Text>
-        <TouchableOpacity 
-          style={styles.createButton}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-      </View>
+      <YStack paddingHorizontal={16} paddingTop={20} paddingBottom={10}>
+        <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
+          <Text fontSize={24} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+            SUB-ACCOUNTS
+          </Text>
+          <TouchableOpacity
+            onPress={() => setShowCreateModal(true)}
+          >
+            <YStack
+              backgroundColor="#0079c1"
+              width={44}
+              height={44}
+              borderRadius={22}
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Ionicons name="add" size={24} color="#FFFFFF" />
+            </YStack>
+          </TouchableOpacity>
+        </XStack>
+      </YStack>
 
       {/* Content */}
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingHorizontal: 16 }}>
         {subAccounts.length > 0 ? (
           subAccounts.map(renderSubAccount)
         ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={48} color="#C7C7CC" />
-            <Text style={styles.emptyTitle}>No sub-accounts yet</Text>
-            <Text style={styles.emptySubtitle}>Create sub-accounts to manage family finances</Text>
-            <TouchableOpacity 
-              style={styles.emptyButton}
+          <YStack alignItems="center" paddingVertical={48}>
+            <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.3)" />
+            <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+              No Sub-Accounts Yet
+            </Text>
+            <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center" marginBottom={24}>
+              &gt; Create sub-accounts to manage family finances
+            </Text>
+            <TouchableOpacity
               onPress={() => setShowCreateModal(true)}
             >
-              <Text style={styles.emptyButtonText}>Create First Sub-Account</Text>
+              <YStack backgroundColor="#0079c1" paddingHorizontal={24} paddingVertical={12} borderRadius={8}>
+                <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                  CREATE FIRST SUB-ACCOUNT
+                </Text>
+              </YStack>
             </TouchableOpacity>
-          </View>
+          </YStack>
         )}
       </ScrollView>
 
@@ -235,84 +307,121 @@ export const SubAccountsScreen = () => {
         animationType="slide"
         onRequestClose={() => setShowCreateModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Create Sub-Account</Text>
+        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
+          <YStack
+            backgroundColor="#0a0e27"
+            borderTopLeftRadius={20}
+            borderTopRightRadius={20}
+            paddingTop={20}
+          >
+            <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                CREATE SUB-ACCOUNT
+              </Text>
               <TouchableOpacity onPress={() => setShowCreateModal(false)}>
-                <Ionicons name="close" size={24} color="#8E8E93" />
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
-            </View>
+            </XStack>
 
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Account Name</Text>
+            <YStack paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
+                ACCOUNT NAME
+              </Text>
               <TextInput
                 style={styles.textInput}
                 value={newAccountName}
                 onChangeText={setNewAccountName}
                 placeholder="Enter account name"
-                placeholderTextColor="#C7C7CC"
+                placeholderTextColor="rgba(255,255,255,0.3)"
               />
 
-              <Text style={styles.inputLabel}>Account Type</Text>
-              <View style={styles.typeSelector}>
+              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} marginTop={16} letterSpacing={0.5}>
+                ACCOUNT TYPE
+              </Text>
+              <XStack gap={8}>
                 <TouchableOpacity
-                  style={[
-                    styles.typeOption,
-                    newAccountType === 'saver' && styles.selectedTypeOption
-                  ]}
+                  style={{ flex: 1 }}
                   onPress={() => setNewAccountType('saver')}
                 >
-                  <Ionicons 
-                    name="card" 
-                    size={20} 
-                    color={newAccountType === 'saver' ? '#0070BA' : '#8E8E93'} 
-                  />
-                  <Text style={[
-                    styles.typeOptionText,
-                    newAccountType === 'saver' && styles.selectedTypeOptionText
-                  ]}>
-                    Saver
-                  </Text>
+                  <YStack
+                    padding={16}
+                    borderRadius={12}
+                    borderWidth={2}
+                    borderColor={newAccountType === 'saver' ? '#0079c1' : 'rgba(255,255,255,0.2)'}
+                    backgroundColor={newAccountType === 'saver' ? 'rgba(0,121,193,0.1)' : 'transparent'}
+                    alignItems="center"
+                    gap={8}
+                  >
+                    <Ionicons
+                      name="card"
+                      size={20}
+                      color={newAccountType === 'saver' ? '#0079c1' : 'rgba(255,255,255,0.5)'}
+                    />
+                    <Text
+                      fontSize={12}
+                      fontWeight="600"
+                      color={newAccountType === 'saver' ? '#0079c1' : 'rgba(255,255,255,0.5)'}
+                      fontFamily="SpaceGrotesk_600SemiBold"
+                    >
+                      SAVER
+                    </Text>
+                  </YStack>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[
-                    styles.typeOption,
-                    newAccountType === 'sub_account' && styles.selectedTypeOption
-                  ]}
+                  style={{ flex: 1 }}
                   onPress={() => setNewAccountType('sub_account')}
                 >
-                  <Ionicons 
-                    name="wallet" 
-                    size={20} 
-                    color={newAccountType === 'sub_account' ? '#0070BA' : '#8E8E93'} 
-                  />
-                  <Text style={[
-                    styles.typeOptionText,
-                    newAccountType === 'sub_account' && styles.selectedTypeOptionText
-                  ]}>
-                    Sub Account
-                  </Text>
+                  <YStack
+                    padding={16}
+                    borderRadius={12}
+                    borderWidth={2}
+                    borderColor={newAccountType === 'sub_account' ? '#0079c1' : 'rgba(255,255,255,0.2)'}
+                    backgroundColor={newAccountType === 'sub_account' ? 'rgba(0,121,193,0.1)' : 'transparent'}
+                    alignItems="center"
+                    gap={8}
+                  >
+                    <Ionicons
+                      name="wallet"
+                      size={20}
+                      color={newAccountType === 'sub_account' ? '#0079c1' : 'rgba(255,255,255,0.5)'}
+                    />
+                    <Text
+                      fontSize={12}
+                      fontWeight="600"
+                      color={newAccountType === 'sub_account' ? '#0079c1' : 'rgba(255,255,255,0.5)'}
+                      fontFamily="SpaceGrotesk_600SemiBold"
+                    >
+                      SUB ACCOUNT
+                    </Text>
+                  </YStack>
                 </TouchableOpacity>
-              </View>
-            </View>
+              </XStack>
+            </YStack>
 
-            <View style={styles.modalFooter}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
+            <XStack paddingHorizontal={20} paddingBottom={20} gap={8}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
                 onPress={() => setShowCreateModal(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
+                <YStack paddingVertical={16} alignItems="center">
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_600SemiBold">
+                    CANCEL
+                  </Text>
+                </YStack>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.createAccountButton}
+              <TouchableOpacity
+                style={{ flex: 1 }}
                 onPress={handleCreateAccount}
               >
-                <Text style={styles.createAccountButtonText}>Create Account</Text>
+                <YStack backgroundColor="#0079c1" paddingVertical={16} alignItems="center" borderRadius={12}>
+                  <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                    CREATE
+                  </Text>
+                </YStack>
               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+            </XStack>
+          </YStack>
+        </YStack>
       </Modal>
     </SafeAreaView>
   );
@@ -321,258 +430,20 @@ export const SubAccountsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#0a0e27',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  createButton: {
-    backgroundColor: '#0070BA',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
+  scrollView: {
     flex: 1,
-    paddingHorizontal: 20,
-  },
-  accountCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  accountHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  accountLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  accountIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  accountInfo: {
-    flex: 1,
-  },
-  accountName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  accountType: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  accountBalance: {
-    marginBottom: 16,
-  },
-  balanceLabel: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 4,
-  },
-  balanceAmount: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  accountDetails: {
-    marginBottom: 16,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  detailLabel: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1A1A1A',
-  },
-  accountActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F2F2F7',
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#0070BA',
-    marginLeft: 4,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#8E8E93',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#C7C7CC',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#0070BA',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  emptyButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  modalBody: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1A1A1A',
-    marginBottom: 8,
   },
   textInput: {
     borderWidth: 1,
-    borderColor: '#E5E5EA',
+    borderColor: 'rgba(0,121,193,0.3)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    marginBottom: 20,
-  },
-  typeSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  typeOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-  },
-  selectedTypeOption: {
-    borderColor: '#0070BA',
-    backgroundColor: '#0070BA' + '10',
-  },
-  typeOptionText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#8E8E93',
-    marginLeft: 8,
-  },
-  selectedTypeOptionText: {
-    color: '#0070BA',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  cancelButtonText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  createAccountButton: {
-    flex: 1,
-    backgroundColor: '#0070BA',
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  createAccountButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#FFFFFF',
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    fontFamily: 'SpaceGrotesk_400Regular',
   },
 });
