@@ -32,6 +32,7 @@ import {
   BlockscoutTokenTransfer,
 } from "@/services/blockscoutService";
 import { ReceiveScreen } from "./ReceiveScreen";
+import { transactionEvents } from "@/utils/transactionEvents";
 
 // Arbitrum Sepolia network details
 const ARBITRUM_SEPOLIA_CHAIN_ID = "421614";
@@ -52,6 +53,8 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const [showReceiveScreen, setShowReceiveScreen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<BlockscoutTokenTransfer[]>([]);
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const lastFetchTime = useRef<number>(0);
+  const isMounted = useRef(true);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
@@ -129,7 +132,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     }
   }, [account?.address, smartWalletAddress]);
 
-  const fetchBalances = useCallback(async (isManualRefresh = false) => {
+  const fetchBalances = useCallback(async (isManualRefresh = false, skipLoading = false) => {
     // Wait for SmartWallet to be initialized
     if (!smartWalletAddress) {
       console.log("⏳ Waiting for SmartWallet initialization...");
@@ -142,9 +145,19 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
       return;
     }
 
+    // Cache logic: skip if fetched in last 30 seconds (unless manual refresh)
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTime.current;
+    const CACHE_DURATION = 30000; // 30 seconds
+
+    if (!isManualRefresh && timeSinceLastFetch < CACHE_DURATION && lastFetchTime.current > 0) {
+      console.log("📦 Using cached data (fetched", Math.floor(timeSinceLastFetch / 1000), "seconds ago)");
+      return;
+    }
+
     if (isManualRefresh) {
       setIsRefreshing(true);
-    } else {
+    } else if (!skipLoading) {
       setIsLoading(true);
     }
 
@@ -153,8 +166,10 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
       console.log("📊 Fetching balance via Blockscout API...");
       const balance = await getTokenBalance(smartWalletAddress);
 
-      // Add a minimum loading time for smooth UX
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Add a minimum loading time for smooth UX (only if showing loader)
+      if (!skipLoading) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
 
       setUsdBalance(balance);
       console.log("✅ Blockscout: PYUSD balance fetched successfully:", balance);
@@ -164,9 +179,14 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
       setRecentTransactions(txs);
       console.log("✅ Blockscout: Loaded", txs.length, "recent transactions");
 
+      // Update last fetch time
+      lastFetchTime.current = Date.now();
+
     } catch (error: any) {
       console.error("❌ Error fetching balances:", error);
-      Alert.alert("Error", `Failed to fetch balances: ${error.message}`);
+      if (!skipLoading) {
+        Alert.alert("Error", `Failed to fetch balances: ${error.message}`);
+      }
     } finally {
       setIsRefreshing(false);
       setIsLoading(false);
@@ -206,6 +226,20 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     if (!address) return "";
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
+
+  // Listen for transaction completion events
+  useEffect(() => {
+    const unsubscribe = transactionEvents.subscribe(() => {
+      console.log("📡 Transaction completed, waiting 2s then refreshing balance...");
+      // Wait 2 seconds for blockchain to process, then refresh
+      setTimeout(() => {
+        lastFetchTime.current = 0; // Invalidate cache
+        fetchBalances(false, false); // Fetch fresh data with loading indicator
+      }, 2000);
+    });
+
+    return unsubscribe;
+  }, [fetchBalances]);
 
   const emailAccount = user?.linked_accounts?.find((account: any) => account.type === 'email') as { address?: string } | undefined;
   const userEmail = emailAccount?.address;

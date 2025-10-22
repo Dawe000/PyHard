@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   StyleSheet,
   SafeAreaView,
@@ -6,7 +6,8 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
-  ActivityIndicator
+  ActivityIndicator,
+  Animated
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
@@ -22,6 +23,7 @@ import {
 } from "@/services/blockscoutService";
 import * as Linking from 'expo-linking';
 import { TransactionDetailsModal } from "./TransactionDetailsModal";
+import { transactionEvents } from "@/utils/transactionEvents";
 
 interface TransactionsScreenProps {
   initialTransaction?: BlockscoutTokenTransfer | null;
@@ -34,9 +36,33 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<BlockscoutTokenTransfer | null>(initialTransaction || null);
   const [showTransactionModal, setShowTransactionModal] = useState(!!initialTransaction);
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+  const lastFetchTime = useRef<number>(0);
 
   const { user } = usePrivy();
   const account = getUserEmbeddedEthereumWallet(user);
+
+  // Pulsing animation for skeleton loader
+  useEffect(() => {
+    if (isLoading) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.4,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isLoading, pulseAnim]);
 
   // Initialize SmartWallet address
   useEffect(() => {
@@ -60,6 +86,16 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
       return;
     }
 
+    // Cache logic: skip if fetched in last 30 seconds (unless manual refresh)
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTime.current;
+    const CACHE_DURATION = 30000; // 30 seconds
+
+    if (!isRefresh && timeSinceLastFetch < CACHE_DURATION && lastFetchTime.current > 0) {
+      console.log('📦 Using cached transactions (fetched', Math.floor(timeSinceLastFetch / 1000), 'seconds ago)');
+      return;
+    }
+
     console.log('🔍 Blockscout: Loading transaction history for SmartWallet:', smartWalletAddress);
 
     if (isRefresh) {
@@ -71,8 +107,17 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
     try {
       // Fetch PYUSD token transfers
       const pyusdTransfers = await getPYUSDTransfers(smartWalletAddress, 1, 20);
+
+      // Add minimum loading time for smooth UX
+      if (!isRefresh) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       console.log('✅ Blockscout: Loaded', pyusdTransfers.length, 'PYUSD transfers');
       setTransactions(pyusdTransfers);
+
+      // Update last fetch time
+      lastFetchTime.current = Date.now();
     } catch (error) {
       console.error('❌ Blockscout: Error loading transaction history:', error);
       Alert.alert('Error', 'Failed to load transaction history from Blockscout');
@@ -96,6 +141,20 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
       setShowTransactionModal(true);
     }
   }, [initialTransaction]);
+
+  // Listen for transaction completion events
+  useEffect(() => {
+    const unsubscribe = transactionEvents.subscribe(() => {
+      console.log("📡 Transaction completed, waiting 2s then refreshing transactions...");
+      // Wait 2 seconds for blockchain to process, then refresh
+      setTimeout(() => {
+        lastFetchTime.current = 0; // Invalidate cache
+        loadTransactions(false); // Fetch fresh data with loading indicator
+      }, 2000);
+    });
+
+    return unsubscribe;
+  }, [loadTransactions]);
 
   const handleRefresh = () => {
     loadTransactions(true);
@@ -239,11 +298,40 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
         }
       >
         {isLoading ? (
-          <YStack alignItems="center" paddingVertical={48}>
-            <ActivityIndicator size="large" color="#0079c1" />
-            <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular" marginTop={16}>
-              &gt; Loading from Blockscout...
-            </Text>
+          <YStack paddingHorizontal={16}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Animated.View key={i} style={{ opacity: pulseAnim, marginBottom: 12 }}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ borderRadius: 12, padding: 1 }}
+                >
+                  <YStack
+                    backgroundColor="rgba(10,14,39,0.6)"
+                    borderRadius={11}
+                    padding={16}
+                    borderWidth={1}
+                    borderColor="rgba(0,121,193,0.2)"
+                  >
+                    <XStack justifyContent="space-between" alignItems="center">
+                      <XStack alignItems="center" gap={12} flex={1}>
+                        <YStack width={40} height={40} borderRadius={20} backgroundColor="rgba(255,255,255,0.1)" />
+                        <YStack flex={1} gap={6}>
+                          <YStack width={120} height={14} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                          <YStack width={160} height={12} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                          <YStack width={140} height={11} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                        </YStack>
+                      </XStack>
+                      <YStack alignItems="flex-end" gap={6}>
+                        <YStack width={100} height={14} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                        <YStack width={60} height={10} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                      </YStack>
+                    </XStack>
+                  </YStack>
+                </LinearGradient>
+              </Animated.View>
+            ))}
           </YStack>
         ) : (
           <YStack>

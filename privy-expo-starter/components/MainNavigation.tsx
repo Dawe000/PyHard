@@ -1,11 +1,10 @@
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 import {
   Text,
   View,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
-  Animated
+  SafeAreaView
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BalanceScreen } from "./BalanceScreen";
@@ -23,25 +22,10 @@ export const MainNavigation = () => {
   const [scannedQRData, setScannedQRData] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [previousTab, setPreviousTab] = useState<TabType>('balance');
-  const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const handleTabChange = (newTab: TabType) => {
-    // Fade out
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 150,
-      useNativeDriver: true,
-    }).start(() => {
-      // Change tab
-      setPreviousTab(activeTab);
-      setActiveTab(newTab);
-      // Fade in
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    });
+    setPreviousTab(activeTab);
+    setActiveTab(newTab);
   };
 
   const handleQRScanned = (qrData: any) => {
@@ -70,41 +54,38 @@ export const MainNavigation = () => {
       );
     }
 
-    switch (activeTab) {
-      case 'balance':
-        return <BalanceScreen navigation={{
-          navigate: (screen: string, params?: any) => {
-            if (screen === 'transactions' && params?.transaction) {
-              setSelectedTransaction(params.transaction);
+    return (
+      <>
+        <View style={{ display: activeTab === 'balance' ? 'flex' : 'none', flex: 1 }}>
+          <BalanceScreen navigation={{
+            navigate: (screen: string, params?: any) => {
+              if (screen === 'transactions' && params?.transaction) {
+                setSelectedTransaction(params.transaction);
+              }
+              handleTabChange(screen as TabType);
             }
-            handleTabChange(screen as TabType);
-          }
-        }} />;
-      case 'transactions':
-        return <TransactionsScreen initialTransaction={selectedTransaction} />;
-      case 'subaccounts':
-        return <SubAccountsScreen />;
-      case 'profile':
-        return <ProfileScreen />;
-      case 'send':
-        return <SendScreen onBack={() => handleTabChange(previousTab)} />;
-      case 'scan':
-        return (
+          }} />
+        </View>
+        <View style={{ display: activeTab === 'transactions' ? 'flex' : 'none', flex: 1 }}>
+          <TransactionsScreen initialTransaction={selectedTransaction} />
+        </View>
+        <View style={{ display: activeTab === 'subaccounts' ? 'flex' : 'none', flex: 1 }}>
+          <SubAccountsScreen />
+        </View>
+        <View style={{ display: activeTab === 'profile' ? 'flex' : 'none', flex: 1 }}>
+          <ProfileScreen />
+        </View>
+        <View style={{ display: activeTab === 'send' ? 'flex' : 'none', flex: 1 }}>
+          <SendScreen onBack={() => handleTabChange(previousTab)} />
+        </View>
+        <View style={{ display: activeTab === 'scan' ? 'flex' : 'none', flex: 1 }}>
           <QRScannerScreen
             onQRScanned={handleQRScanned}
             onClose={() => setActiveTab('balance')}
           />
-        );
-      default:
-        return <BalanceScreen navigation={{
-          navigate: (screen: string, params?: any) => {
-            if (screen === 'transactions' && params?.transaction) {
-              setSelectedTransaction(params.transaction);
-            }
-            handleTabChange(screen as TabType);
-          }
-        }} />;
-    }
+        </View>
+      </>
+    );
   };
 
   const getTabIcon = (tab: TabType) => {
@@ -143,9 +124,9 @@ export const MainNavigation = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+      <View style={styles.content}>
         {renderScreen()}
-      </Animated.View>
+      </View>
       
       <View style={styles.tabBar}>
         <TouchableOpacity

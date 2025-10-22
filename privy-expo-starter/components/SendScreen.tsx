@@ -17,6 +17,7 @@ import { createPrivyClient } from "@privy-io/expo";
 import { sendPYUSD } from "@/services/sendService";
 import { getOrCreateSmartWallet } from "@/services/smartWallet";
 import { YStack, XStack, Text } from "tamagui";
+import { transactionEvents } from "@/utils/transactionEvents";
 
 interface SendScreenProps {
   onBack?: () => void;
@@ -252,6 +253,8 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
                 onPress: () => {
                   setRecipientAddress("");
                   setAmount("");
+                  // Emit transaction completed event to refresh balances
+                  transactionEvents.emit();
                 },
               },
             ]
