@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
   Alert,
   ScrollView,
-  RefreshControl
+  RefreshControl,
+  Animated
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -50,10 +51,33 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [showReceiveScreen, setShowReceiveScreen] = useState(false);
   const [recentTransactions, setRecentTransactions] = useState<BlockscoutTokenTransfer[]>([]);
+  const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
   const account = getUserEmbeddedEthereumWallet(user);
+
+  // Pulsing animation for skeleton loader
+  useEffect(() => {
+    if (isLoading) {
+      const pulse = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 0.4,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      pulse.start();
+      return () => pulse.stop();
+    }
+  }, [isLoading, pulseAnim]);
 
   // Initialize SmartWallet on component mount
   const initializeSmartWallet = useCallback(async () => {
@@ -120,12 +144,17 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
 
     if (isManualRefresh) {
       setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
     }
 
     try {
       // Fetch PYUSD balance using Blockscout API
       console.log("📊 Fetching balance via Blockscout API...");
       const balance = await getTokenBalance(smartWalletAddress);
+
+      // Add a minimum loading time for smooth UX
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       setUsdBalance(balance);
       console.log("✅ Blockscout: PYUSD balance fetched successfully:", balance);
@@ -140,6 +169,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
       Alert.alert("Error", `Failed to fetch balances: ${error.message}`);
     } finally {
       setIsRefreshing(false);
+      setIsLoading(false);
     }
   }, [smartWalletAddress, wallets]);
 
@@ -262,12 +292,25 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
               <Text fontSize={12} fontWeight="700" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={2} marginBottom={12}>
                 YOUR BALANCE
               </Text>
-              <Text fontSize={48} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={8}>
-                ${usdBalance}
-              </Text>
-              <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
-                PYUSD
-              </Text>
+              {isLoading ? (
+                <YStack gap={8} alignItems="center">
+                  <Animated.View style={{ opacity: pulseAnim }}>
+                    <YStack width={200} height={48} backgroundColor="rgba(255,255,255,0.15)" borderRadius={8} />
+                  </Animated.View>
+                  <Animated.View style={{ opacity: pulseAnim }}>
+                    <YStack width={80} height={16} backgroundColor="rgba(255,255,255,0.15)" borderRadius={4} marginTop={8} />
+                  </Animated.View>
+                </YStack>
+              ) : (
+                <>
+                  <Text fontSize={48} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={8}>
+                    ${usdBalance}
+                  </Text>
+                  <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
+                    PYUSD
+                  </Text>
+                </>
+              )}
               <XStack alignItems="center" gap={6} marginTop={12} padding={8} backgroundColor="rgba(0,121,193,0.15)" borderRadius={8}>
                 <Ionicons name="shield-checkmark" size={14} color="#0079c1" />
                 <Text fontSize={10} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
@@ -389,7 +432,39 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
             )}
           </XStack>
 
-          {recentTransactions.length > 0 ? (
+          {isLoading ? (
+            <YStack gap={8}>
+              {[1, 2, 3].map((i) => (
+                <Animated.View key={i} style={{ opacity: pulseAnim }}>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ borderRadius: 12, padding: 1 }}
+                  >
+                    <YStack
+                      backgroundColor="rgba(10,14,39,0.6)"
+                      borderRadius={11}
+                      padding={12}
+                      borderWidth={1}
+                      borderColor="rgba(0,121,193,0.2)"
+                    >
+                      <XStack justifyContent="space-between" alignItems="center">
+                        <XStack alignItems="center" gap={10} flex={1}>
+                          <YStack width={32} height={32} borderRadius={16} backgroundColor="rgba(255,255,255,0.1)" />
+                          <YStack gap={4}>
+                            <YStack width={60} height={12} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                            <YStack width={100} height={10} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                          </YStack>
+                        </XStack>
+                        <YStack width={80} height={14} backgroundColor="rgba(255,255,255,0.1)" borderRadius={4} />
+                      </XStack>
+                    </YStack>
+                  </LinearGradient>
+                </Animated.View>
+              ))}
+            </YStack>
+          ) : recentTransactions.length > 0 ? (
             <YStack gap={8}>
               {recentTransactions.map((tx) => {
                 const isSent = tx.from.toLowerCase() === smartWalletAddress?.toLowerCase();

@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   Text,
   View,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView
+  SafeAreaView,
+  Animated
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { BalanceScreen } from "./BalanceScreen";
@@ -22,6 +23,26 @@ export const MainNavigation = () => {
   const [scannedQRData, setScannedQRData] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [previousTab, setPreviousTab] = useState<TabType>('balance');
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const handleTabChange = (newTab: TabType) => {
+    // Fade out
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      // Change tab
+      setPreviousTab(activeTab);
+      setActiveTab(newTab);
+      // Fade in
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   const handleQRScanned = (qrData: any) => {
     setScannedQRData(qrData);
@@ -56,8 +77,7 @@ export const MainNavigation = () => {
             if (screen === 'transactions' && params?.transaction) {
               setSelectedTransaction(params.transaction);
             }
-            setPreviousTab(activeTab);
-            setActiveTab(screen as TabType);
+            handleTabChange(screen as TabType);
           }
         }} />;
       case 'transactions':
@@ -67,7 +87,7 @@ export const MainNavigation = () => {
       case 'profile':
         return <ProfileScreen />;
       case 'send':
-        return <SendScreen onBack={() => setActiveTab(previousTab)} />;
+        return <SendScreen onBack={() => handleTabChange(previousTab)} />;
       case 'scan':
         return (
           <QRScannerScreen
@@ -81,7 +101,7 @@ export const MainNavigation = () => {
             if (screen === 'transactions' && params?.transaction) {
               setSelectedTransaction(params.transaction);
             }
-            setActiveTab(screen as TabType);
+            handleTabChange(screen as TabType);
           }
         }} />;
     }
@@ -123,17 +143,18 @@ export const MainNavigation = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
         {renderScreen()}
-      </View>
+      </Animated.View>
       
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'balance' && styles.activeTab]}
           onPress={() => {
-            setSelectedTransaction(null);
-            setPreviousTab(activeTab);
-            setActiveTab('balance');
+            if (activeTab !== 'balance') {
+              setSelectedTransaction(null);
+              handleTabChange('balance');
+            }
           }}
         >
           <Ionicons 
@@ -152,9 +173,10 @@ export const MainNavigation = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'transactions' && styles.activeTab]}
           onPress={() => {
-            setSelectedTransaction(null);
-            setPreviousTab(activeTab);
-            setActiveTab('transactions');
+            if (activeTab !== 'transactions') {
+              setSelectedTransaction(null);
+              handleTabChange('transactions');
+            }
           }}
         >
           <Ionicons 
@@ -173,8 +195,9 @@ export const MainNavigation = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'subaccounts' && styles.activeTab]}
           onPress={() => {
-            setPreviousTab(activeTab);
-            setActiveTab('subaccounts');
+            if (activeTab !== 'subaccounts') {
+              handleTabChange('subaccounts');
+            }
           }}
         >
           <Ionicons
@@ -194,8 +217,9 @@ export const MainNavigation = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'scan' && styles.activeTab]}
           onPress={() => {
-            setPreviousTab(activeTab);
-            setActiveTab('scan');
+            if (activeTab !== 'scan') {
+              handleTabChange('scan');
+            }
           }}
         >
           <Ionicons
@@ -214,8 +238,9 @@ export const MainNavigation = () => {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
           onPress={() => {
-            setPreviousTab(activeTab);
-            setActiveTab('profile');
+            if (activeTab !== 'profile') {
+              handleTabChange('profile');
+            }
           }}
         >
           <Ionicons
