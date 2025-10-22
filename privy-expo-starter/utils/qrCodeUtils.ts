@@ -78,6 +78,11 @@ export function isPaymentRequest(qrData: QRCodeData): boolean {
  */
 export function formatAmount(amount: string): string {
   const numAmount = parseFloat(amount);
+  // If amount is already in display format (less than 1000000), return as is
+  if (numAmount < 1000000) {
+    return numAmount.toFixed(2);
+  }
+  // Otherwise, convert from PYUSD units to display units
   return (numAmount / 1000000).toFixed(2); // PYUSD has 6 decimals
 }
 

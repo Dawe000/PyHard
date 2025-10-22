@@ -6,7 +6,9 @@ import { YStack, XStack } from 'tamagui';
 import QRCode from 'react-native-qrcode-svg';
 import { usePrivy, getUserEmbeddedEthereumWallet } from '@privy-io/expo';
 import { createPaymentRequestQR, encodeQRData, parseAmount, formatAmount } from '@/utils/qrCodeUtils';
-// Removed SmartWallet dependency - using EOA address directly
+import { getOrCreateSmartWallet } from '@/services/smartWallet';
+import { createPrivyClient } from '@privy-io/expo';
+import Constants from "expo-constants";
 
 interface ReceiveScreenProps {
   onClose: () => void;
@@ -20,7 +22,7 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ onClose }) => {
   const account = getUserEmbeddedEthereumWallet(user);
 
   const generateQR = useCallback(async () => {
-    if (!amount || !account?.address) {
+    if (!amount || !account?.address || !user?.id) {
       Alert.alert('Error', 'Please enter an amount and ensure your wallet is ready.');
       return;
     }
@@ -34,8 +36,21 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ onClose }) => {
     setIsGenerating(true);
     
     try {
-      const amountInUnits = parseAmount(amount);
-      const paymentRequest = createPaymentRequestQR(account.address, amountInUnits);
+      // Get SmartWallet address (same as in PaymentConfirmationScreen)
+      const privyClient = createPrivyClient(Constants.expoConfig?.extra?.privyAppId as string);
+      const accessToken = await privyClient.getAccessToken();
+      if (!accessToken) {
+        throw new Error("Failed to get Privy access token.");
+      }
+
+      const smartWalletInfo = await getOrCreateSmartWallet(account.address, accessToken);
+      const smartWalletAddress = smartWalletInfo.address;
+
+      if (!smartWalletAddress) {
+        throw new Error("Failed to get SmartWallet address.");
+      }
+
+      const paymentRequest = createPaymentRequestQR(smartWalletAddress, amount);
       const qrString = encodeQRData(paymentRequest);
       setQrData(qrString);
     } catch (error) {
@@ -44,7 +59,7 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ onClose }) => {
     } finally {
       setIsGenerating(false);
     }
-  }, [amount, account?.address]);
+  }, [amount, account?.address, user?.id]);
 
   const copyAddress = async () => {
     if (account?.address) {
