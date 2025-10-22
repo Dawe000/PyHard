@@ -1,51 +1,88 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
-  Alert
+  Alert,
+  RefreshControl
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
+import { usePrivy, getUserEmbeddedEthereumWallet } from "@privy-io/expo";
+import { getOrCreateSmartWallet } from "@/services/smartWallet";
+import { 
+  getTransactionHistory, 
+  formatTransactionTime, 
+  formatAddress,
+  Transaction 
+} from "@/services/transactionHistoryService";
 
 export const TransactionsScreen = () => {
   const [selectedTab, setSelectedTab] = useState<'transactions' | 'contracts'>('transactions');
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
 
-  // Mock transaction data
-  const mockTransactions = [
-    {
-      id: '1',
-      type: 'send',
-      amount: '50.00',
-      currency: 'PYUSD',
-      to: '0x742d...8a9b',
-      timestamp: '2 hours ago',
-      status: 'completed',
-      hash: '0x1234...5678'
-    },
-    {
-      id: '2',
-      type: 'receive',
-      amount: '25.00',
-      currency: 'PYUSD',
-      from: '0x8a9b...742d',
-      timestamp: '1 day ago',
-      status: 'completed',
-      hash: '0x5678...1234'
-    },
-    {
-      id: '3',
-      type: 'swap',
-      amount: '100.00',
-      currency: 'PYUSD',
-      to: 'ETH',
-      timestamp: '3 days ago',
-      status: 'completed',
-      hash: '0x9abc...def0'
+  const { user } = usePrivy();
+  const account = getUserEmbeddedEthereumWallet(user);
+
+  // Initialize SmartWallet address
+  useEffect(() => {
+    const initializeWallet = async () => {
+      if (account?.address) {
+        try {
+          const wallet = await getOrCreateSmartWallet(account.address, "placeholder-token");
+          setSmartWalletAddress(wallet.address);
+        } catch (error) {
+          console.error('Error getting SmartWallet address:', error);
+        }
+      }
+    };
+    initializeWallet();
+  }, [account?.address]);
+
+  // Load transaction history
+  const loadTransactions = useCallback(async (isRefresh = false) => {
+    if (!smartWalletAddress) {
+      console.log('❌ No SmartWallet address available for transaction history');
+      return;
     }
-  ];
+    
+    console.log('🔍 Loading transaction history for SmartWallet:', smartWalletAddress);
+    
+    if (isRefresh) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const txHistory = await getTransactionHistory(smartWalletAddress, { limit: 50 });
+      console.log('📊 Transaction history loaded:', txHistory.length, 'transactions');
+      console.log('📊 Transactions:', txHistory);
+      setTransactions(txHistory);
+    } catch (error) {
+      console.error('❌ Error loading transaction history:', error);
+      Alert.alert('Error', 'Failed to load transaction history');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [smartWalletAddress]);
+
+  // Load transactions when SmartWallet address is available
+  useEffect(() => {
+    if (smartWalletAddress) {
+      loadTransactions();
+    }
+  }, [smartWalletAddress, loadTransactions]);
+
+  const handleRefresh = () => {
+    loadTransactions(true);
+  };
 
   // Mock contract interactions
   const mockContracts = [
@@ -71,34 +108,30 @@ export const TransactionsScreen = () => {
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case 'send':
+      case 'sent':
         return 'arrow-up';
-      case 'receive':
+      case 'received':
         return 'arrow-down';
-      case 'swap':
-        return 'swap-horizontal';
       default:
-        return 'swap-horizontal';
+        return 'help';
     }
   };
 
   const getTransactionColor = (type: string) => {
     switch (type) {
-      case 'send':
+      case 'sent':
         return '#FF3B30';
-      case 'receive':
+      case 'received':
         return '#34C759';
-      case 'swap':
-        return '#0079c1';
       default:
         return '#8E8E93';
     }
   };
 
-  const renderTransaction = (transaction: any) => (
+  const renderTransaction = (transaction: Transaction) => (
     <TouchableOpacity
-      key={transaction.id}
-      onPress={() => Alert.alert("Transaction Details", `Hash: ${transaction.hash}\nStatus: ${transaction.status}`)}
+      key={transaction.hash}
+      onPress={() => Alert.alert("Transaction Details", `Hash: ${transaction.hash}\nAmount: ${transaction.displayAmount} PYUSD\nTo: ${formatAddress(transaction.to)}\nFrom: ${formatAddress(transaction.from)}\nTime: ${formatTransactionTime(transaction.timestamp)}`)}
     >
       <LinearGradient
         colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
@@ -131,12 +164,10 @@ export const TransactionsScreen = () => {
               </YStack>
               <YStack flex={1}>
                 <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={4}>
-                  {transaction.type === 'send' ? 'Sent to' :
-                   transaction.type === 'receive' ? 'Received from' :
-                   'Swapped to'} {transaction.to || transaction.from}
+                  {transaction.type === 'sent' ? 'Sent to' : 'Received from'} {formatAddress(transaction.type === 'sent' ? transaction.to : transaction.from)}
                 </Text>
                 <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                  &gt; {transaction.timestamp}
+                  &gt; {formatTransactionTime(transaction.timestamp)}
                 </Text>
               </YStack>
             </XStack>
@@ -144,14 +175,14 @@ export const TransactionsScreen = () => {
               <Text
                 fontSize={16}
                 fontWeight="700"
-                color={transaction.type === 'receive' ? '#34C759' : '#FF3B30'}
+                color={transaction.type === 'received' ? '#34C759' : '#FF3B30'}
                 fontFamily="SpaceGrotesk_700Bold"
               >
-                {transaction.type === 'receive' ? '+' : '-'}${transaction.amount}
+                {transaction.type === 'received' ? '+' : '-'}{transaction.displayAmount} PYUSD
               </Text>
               <YStack backgroundColor="rgba(52,199,89,0.2)" paddingHorizontal={8} paddingVertical={4} borderRadius={12}>
                 <Text fontSize={10} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
-                  {transaction.status.toUpperCase()}
+                  COMPLETED
                 </Text>
               </YStack>
             </YStack>
@@ -279,11 +310,29 @@ export const TransactionsScreen = () => {
       </YStack>
 
       {/* Content */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingHorizontal: 16 }}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#0079c1"
+            titleColor="rgba(255,255,255,0.6)"
+          />
+        }
+      >
         {selectedTab === 'transactions' ? (
           <YStack>
-            {mockTransactions.length > 0 ? (
-              mockTransactions.map(renderTransaction)
+            {isLoading ? (
+              <YStack alignItems="center" paddingVertical={48}>
+                <Ionicons name="hourglass-outline" size={48} color="rgba(255,255,255,0.3)" />
+                <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                  Loading Transactions...
+                </Text>
+              </YStack>
+            ) : transactions.length > 0 ? (
+              transactions.map(renderTransaction)
             ) : (
               <YStack alignItems="center" paddingVertical={48}>
                 <Ionicons name="receipt-outline" size={48} color="rgba(255,255,255,0.3)" />

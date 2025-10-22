@@ -12,13 +12,41 @@ import { TransactionsScreen } from "./TransactionsScreen";
 import { SubAccountsScreen } from "./SubAccountsScreen";
 import SendScreen from "./SendScreen";
 import { ProfileScreen } from "./ProfileScreen";
+import { QRScannerScreen } from "./QRScannerScreen";
+import { PaymentConfirmationScreen } from "./PaymentConfirmationScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
+  const [scannedQRData, setScannedQRData] = useState<any>(null);
+
+  const handleQRScanned = (qrData: any) => {
+    setScannedQRData(qrData);
+    setActiveTab('payment-confirmation' as any);
+  };
+
+  const handlePaymentComplete = () => {
+    setScannedQRData(null);
+    setActiveTab('transactions');
+  };
+
+  const handlePaymentCancel = () => {
+    setScannedQRData(null);
+    setActiveTab('scan');
+  };
 
   const renderScreen = () => {
+    if (scannedQRData) {
+      return (
+        <PaymentConfirmationScreen
+          qrData={scannedQRData}
+          onPaymentComplete={handlePaymentComplete}
+          onCancel={handlePaymentCancel}
+        />
+      );
+    }
+
     switch (activeTab) {
       case 'balance':
         return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
@@ -30,6 +58,13 @@ export const MainNavigation = () => {
         return <ProfileScreen />;
       case 'send':
         return <SendScreen />;
+      case 'scan':
+        return (
+          <QRScannerScreen
+            onQRScanned={handleQRScanned}
+            onClose={() => setActiveTab('balance')}
+          />
+        );
       default:
         return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
     }
@@ -45,6 +80,8 @@ export const MainNavigation = () => {
         return 'people';
       case 'profile':
         return 'person-circle';
+      case 'scan':
+        return 'qr-code';
       default:
         return 'wallet';
     }
@@ -60,6 +97,8 @@ export const MainNavigation = () => {
         return 'Sub-Accounts';
       case 'profile':
         return 'Profile';
+      case 'scan':
+        return 'Scan';
       default:
         return 'Balance';
     }
@@ -121,6 +160,23 @@ export const MainNavigation = () => {
             activeTab === 'subaccounts' && styles.activeTabLabel
           ]}>
             {getTabLabel('subaccounts')}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'scan' && styles.activeTab]}
+          onPress={() => setActiveTab('scan')}
+        >
+          <Ionicons
+            name={getTabIcon('scan')}
+            size={24}
+            color={activeTab === 'scan' ? '#0070BA' : '#8E8E93'}
+          />
+          <Text style={[
+            styles.tabLabel,
+            activeTab === 'scan' && styles.activeTabLabel
+          ]}>
+            {getTabLabel('scan')}
           </Text>
         </TouchableOpacity>
 

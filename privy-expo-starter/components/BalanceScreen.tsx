@@ -22,6 +22,7 @@ import {
   getOrCreateSmartWallet,
   getSmartWalletPYUSDBalance,
 } from "@/services/smartWallet";
+import { ReceiveScreen } from "./ReceiveScreen";
 
 // Arbitrum Sepolia network details
 const ARBITRUM_SEPOLIA_CHAIN_ID = "421614";
@@ -39,6 +40,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
+  const [showReceiveScreen, setShowReceiveScreen] = useState(false);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
@@ -184,6 +186,12 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
 
   const emailAccount = user?.linked_accounts?.find((account: any) => account.type === 'email') as { address?: string } | undefined;
   const userEmail = emailAccount?.address;
+
+  if (showReceiveScreen) {
+    return (
+      <ReceiveScreen onClose={() => setShowReceiveScreen(false)} />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -337,7 +345,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
 
             <TouchableOpacity
               style={{ flex: 1 }}
-              onPress={() => Alert.alert("Coming Soon", "Receive feature coming soon!")}
+              onPress={() => setShowReceiveScreen(true)}
             >
               <LinearGradient
                 colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
