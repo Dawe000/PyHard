@@ -2,7 +2,11 @@ import { createPublicClient, http, formatUnits } from 'viem';
 import { arbitrumSepolia } from 'viem/chains';
 import { PYUSD_ADDRESS } from '@/constants/contracts';
 
-// PYUSD ABI for Transfer events
+// Blockscout API configuration
+const BLOCKSCOUT_API_BASE = 'https://arbitrum-sepolia.blockscout.com/api/v2';
+const PYUSD_TOKEN_ADDRESS = '0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1';
+
+// PYUSD ABI for Transfer events (fallback)
 const PYUSD_ABI = [
   {
     type: 'event',
@@ -26,6 +30,36 @@ export interface Transaction {
   type: 'sent' | 'received';
 }
 
+// Blockscout API response interfaces
+interface BlockscoutTokenTransfer {
+  block_hash: string;
+  block_number: number;
+  from: {
+    hash: string;
+  };
+  to: {
+    hash: string;
+  };
+  token: {
+    address_hash: string;
+    decimals: string;
+    name: string;
+    symbol: string;
+  };
+  total: {
+    decimals: string;
+    value: string;
+  };
+  transaction_hash: string;
+  timestamp: string;
+  type: string;
+}
+
+interface BlockscoutResponse {
+  items: BlockscoutTokenTransfer[];
+  next_page_params: any;
+}
+
 export interface TransactionHistoryOptions {
   fromBlock?: bigint;
   toBlock?: bigint;
@@ -33,166 +67,121 @@ export interface TransactionHistoryOptions {
 }
 
 /**
+ * Fetch token transfers from Blockscout API
+ */
+async function fetchBlockscoutTransfers(
+  address: string,
+  tokenAddress: string,
+  filter: 'from' | 'to' | 'both' = 'both',
+  limit: number = 50
+): Promise<BlockscoutTokenTransfer[]> {
+  const transfers: BlockscoutTokenTransfer[] = [];
+  
+  try {
+    // Fetch sent transfers
+    if (filter === 'from' || filter === 'both') {
+      const sentUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}/token-transfers?token=${tokenAddress}&type=ERC-20&filter=from`;
+      console.log('🔍 Fetching sent transfers from:', sentUrl);
+      
+      const sentResponse = await fetch(sentUrl);
+      if (sentResponse.ok) {
+        const sentData: BlockscoutResponse = await sentResponse.json();
+        transfers.push(...sentData.items);
+        console.log('📤 Sent transfers found:', sentData.items.length);
+      } else {
+        console.log('❌ Error fetching sent transfers:', sentResponse.status);
+      }
+    }
+    
+    // Fetch received transfers
+    if (filter === 'to' || filter === 'both') {
+      const receivedUrl = `${BLOCKSCOUT_API_BASE}/addresses/${address}/token-transfers?token=${tokenAddress}&type=ERC-20&filter=to`;
+      console.log('🔍 Fetching received transfers from:', receivedUrl);
+      
+      const receivedResponse = await fetch(receivedUrl);
+      if (receivedResponse.ok) {
+        const receivedData: BlockscoutResponse = await receivedResponse.json();
+        transfers.push(...receivedData.items);
+        console.log('📥 Received transfers found:', receivedData.items.length);
+      } else {
+        console.log('❌ Error fetching received transfers:', receivedResponse.status);
+      }
+    }
+    
+    // Remove duplicates based on transaction hash and log index
+    const uniqueTransfers = transfers.filter((transfer, index, self) => 
+      index === self.findIndex(t => 
+        t.transaction_hash === transfer.transaction_hash && 
+        t.block_number === transfer.block_number
+      )
+    );
+    
+    console.log('📊 Total unique transfers:', uniqueTransfers.length);
+    return uniqueTransfers.slice(0, limit);
+    
+  } catch (error) {
+    console.error('❌ Error fetching Blockscout transfers:', error);
+    return [];
+  }
+}
+
+/**
  * Get transaction history for a SmartWallet address (PYUSD transfers only)
- * All PYUSD transfers happen from/to the SmartWallet address
+ * Uses Blockscout API for reliable data fetching
  */
 export async function getTransactionHistory(
   smartWalletAddress: string,
   options: TransactionHistoryOptions = {}
 ): Promise<Transaction[]> {
-  const publicClient = createPublicClient({
-    chain: arbitrumSepolia,
-    transport: http('https://sepolia-rollup.arbitrum.io/rpc')
-  });
-
   try {
     console.log('🔍 Fetching transaction history for SmartWallet:', smartWalletAddress);
-    console.log('🔍 PYUSD contract address:', PYUSD_ADDRESS);
-    console.log('🔍 From block:', options.fromBlock || 'earliest');
-    console.log('🔍 To block:', options.toBlock || 'latest');
+    console.log('🔍 Using Blockscout API for PYUSD transfers');
+    console.log('🔍 PYUSD token address:', PYUSD_TOKEN_ADDRESS);
+    console.log('🔍 Limit:', options.limit || 50);
     
-    // Get Transfer events from PYUSD contract where the SmartWallet is either sender or receiver
-    // We need to make two separate calls since viem doesn't support OR conditions in args
-    console.log('🔍 Querying for sent transfers...');
-    const sentLogs = await publicClient.getLogs({
-      address: PYUSD_ADDRESS as `0x${string}`,
-      event: {
-        type: 'event',
-        name: 'Transfer',
-        inputs: [
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'value', type: 'uint256', indexed: false }
-        ]
-      },
-      args: {
-        from: smartWalletAddress as `0x${string}`
-      },
-      fromBlock: options.fromBlock,
-      toBlock: options.toBlock
-    });
-    console.log('📤 Sent logs found:', sentLogs.length);
-    
-    console.log('🔍 Querying for received transfers...');
-    const receivedLogs = await publicClient.getLogs({
-      address: PYUSD_ADDRESS as `0x${string}`,
-      event: {
-        type: 'event',
-        name: 'Transfer',
-        inputs: [
-          { name: 'from', type: 'address', indexed: true },
-          { name: 'to', type: 'address', indexed: true },
-          { name: 'value', type: 'uint256', indexed: false }
-        ]
-      },
-      args: {
-        to: smartWalletAddress as `0x${string}`
-      },
-      fromBlock: options.fromBlock,
-      toBlock: options.toBlock
-    });
-    console.log('📥 Received logs found:', receivedLogs.length);
-
-    // Combine and deduplicate logs
-    const allLogs = [...sentLogs, ...receivedLogs];
-    const uniqueLogs = allLogs.filter((log, index, self) => 
-      index === self.findIndex(l => l.transactionHash === log.transactionHash && l.logIndex === log.logIndex)
+    // Fetch transfers from Blockscout API
+    const transfers = await fetchBlockscoutTransfers(
+      smartWalletAddress,
+      PYUSD_TOKEN_ADDRESS,
+      'both',
+      options.limit || 50
     );
     
-    console.log('📊 Found logs - Sent:', sentLogs.length, 'Received:', receivedLogs.length, 'Total unique:', uniqueLogs.length);
-
-    // If no logs found, let's check if there are any PYUSD transfers at all
-    if (uniqueLogs.length === 0) {
-      console.log('🔍 No transfers found. Checking if SmartWallet has any PYUSD balance...');
-      try {
-        // Check PYUSD balance of SmartWallet
-        const balance = await publicClient.readContract({
-          address: PYUSD_ADDRESS as `0x${string}`,
-          abi: [{
-            type: 'function',
-            name: 'balanceOf',
-            inputs: [{ type: 'address', name: 'account' }],
-            outputs: [{ type: 'uint256' }]
-          }],
-          functionName: 'balanceOf',
-          args: [smartWalletAddress as `0x${string}`]
-        });
-        console.log('💰 SmartWallet PYUSD balance:', balance.toString());
-        
-        // Test: Get ANY Transfer events from PYUSD contract to see if the contract is working
-        console.log('🔍 Testing: Getting ANY Transfer events from PYUSD contract...');
-        const anyLogs = await publicClient.getLogs({
-          address: PYUSD_ADDRESS as `0x${string}`,
-          event: {
-            type: 'event',
-            name: 'Transfer',
-            inputs: [
-              { name: 'from', type: 'address', indexed: true },
-              { name: 'to', type: 'address', indexed: true },
-              { name: 'value', type: 'uint256', indexed: false }
-            ]
-          },
-          fromBlock: options.fromBlock,
-          toBlock: options.toBlock
-        });
-        console.log('🔍 ANY Transfer events found:', anyLogs.length);
-        if (anyLogs.length > 0) {
-          console.log('🔍 Sample Transfer event:', anyLogs[0]);
-          // Check if any of these events involve our SmartWallet
-          const ourEvents = anyLogs.filter(log => {
-            const args = log.args as any;
-            return args.from?.toLowerCase() === smartWalletAddress.toLowerCase() || 
-                   args.to?.toLowerCase() === smartWalletAddress.toLowerCase();
-          });
-          console.log('🔍 Events involving our SmartWallet:', ourEvents.length);
-          if (ourEvents.length > 0) {
-            console.log('🔍 Our SmartWallet event:', ourEvents[0]);
-          }
-        }
-      } catch (error) {
-        console.log('❌ Error checking PYUSD balance or testing transfers:', error);
-      }
-    }
-
-    // Get block details for timestamps
-    const transactions: Transaction[] = [];
+    console.log('📊 Raw transfers from Blockscout:', transfers.length);
     
-    for (const log of uniqueLogs.slice(0, options.limit || 50)) {
-      try {
-        const block = await publicClient.getBlock({
-          blockHash: log.blockHash
-        });
-
-        const args = log.args as any;
-        const isSent = args.from.toLowerCase() === smartWalletAddress.toLowerCase();
-        const isReceived = args.to.toLowerCase() === smartWalletAddress.toLowerCase();
-
-        if (isSent || isReceived) {
-          const amount = args.value.toString();
-          const displayAmount = formatUnits(BigInt(amount), 6); // PYUSD has 6 decimals
-
-          transactions.push({
-            hash: log.transactionHash,
-            from: args.from,
-            to: args.to,
-            amount,
-            displayAmount,
-            timestamp: Number(block.timestamp),
-            blockNumber: log.blockNumber,
-            type: isSent ? 'sent' : 'received'
-          });
-        }
-      } catch (error) {
-        console.error('Error processing transaction log:', error);
-        // Continue with other transactions
-      }
-    }
-
+    // Convert Blockscout transfers to our Transaction format
+    const transactions: Transaction[] = transfers.map(transfer => {
+      const isSent = transfer.from.hash.toLowerCase() === smartWalletAddress.toLowerCase();
+      const isReceived = transfer.to.hash.toLowerCase() === smartWalletAddress.toLowerCase();
+      
+      // Convert amount from smallest units to display units
+      const amount = transfer.total.value;
+      const decimals = parseInt(transfer.token.decimals);
+      const displayAmount = formatUnits(BigInt(amount), decimals);
+      
+      // Convert timestamp from ISO string to Unix timestamp
+      const timestamp = Math.floor(new Date(transfer.timestamp).getTime() / 1000);
+      
+      return {
+        hash: transfer.transaction_hash,
+        from: transfer.from.hash,
+        to: transfer.to.hash,
+        amount,
+        displayAmount,
+        timestamp: timestamp * 1000, // Convert to milliseconds for display
+        blockNumber: BigInt(transfer.block_number),
+        type: isSent ? 'sent' : 'received'
+      };
+    });
+    
     // Sort by timestamp (newest first)
-    return transactions.sort((a, b) => b.timestamp - a.timestamp);
-
+    const sortedTransactions = transactions.sort((a, b) => b.timestamp - a.timestamp);
+    
+    console.log('✅ Processed transactions:', sortedTransactions.length);
+    return sortedTransactions;
+    
   } catch (error) {
-    console.error('Error fetching transaction history:', error);
+    console.error('❌ Error fetching transaction history:', error);
     return [];
   }
 }
@@ -204,71 +193,66 @@ export async function getRecentTransactions(
   smartWalletAddress: string,
   limit: number = 20
 ): Promise<Transaction[]> {
-  const oneDayAgo = BigInt(Math.floor((Date.now() - 24 * 60 * 60 * 1000) / 1000));
+  // For now, just get recent transactions without time filtering
+  // Blockscout API doesn't have built-in time filtering, so we'll filter client-side
+  const allTransactions = await getTransactionHistory(smartWalletAddress, { limit: 100 });
   
-  return getTransactionHistory(smartWalletAddress, {
-    fromBlock: oneDayAgo,
-    limit
-  });
+  // Filter to last 24 hours
+  const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const recentTransactions = allTransactions.filter(tx => tx.timestamp > oneDayAgo);
+  
+  return recentTransactions.slice(0, limit);
 }
 
 /**
- * Get transaction by hash
+ * Get transaction by hash using Blockscout API
  */
 export async function getTransactionByHash(
   transactionHash: string
 ): Promise<Transaction | null> {
-  const publicClient = createPublicClient({
-    chain: arbitrumSepolia,
-    transport: http('https://sepolia-rollup.arbitrum.io/rpc')
-  });
-
   try {
-    const receipt = await publicClient.getTransactionReceipt({
-      hash: transactionHash as `0x${string}`
-    });
-
-    if (!receipt) return null;
-
-    const block = await publicClient.getBlock({
-      blockHash: receipt.blockHash
-    });
-
-    // Parse logs to find PYUSD Transfer event
-    for (const log of receipt.logs) {
-      if (log.address.toLowerCase() === PYUSD_ADDRESS.toLowerCase()) {
-        try {
-          const decoded = publicClient.decodeEventLog({
-            abi: PYUSD_ABI,
-            data: log.data,
-            topics: log.topics
-          });
-
-          if (decoded.eventName === 'Transfer') {
-            const args = decoded.args as any;
-            const amount = args.value.toString();
-            const displayAmount = formatUnits(BigInt(amount), 6);
-
-            return {
-              hash: transactionHash,
-              from: args.from,
-              to: args.to,
-              amount,
-              displayAmount,
-              timestamp: Number(block.timestamp),
-              blockNumber: receipt.blockNumber,
-              type: 'unknown' as 'sent' | 'received' // Can't determine without context
-            };
-          }
-        } catch (error) {
-          // Continue to next log
-        }
+    // Use Blockscout API to get transaction details
+    const url = `${BLOCKSCOUT_API_BASE}/transactions/${transactionHash}`;
+    console.log('🔍 Fetching transaction details from:', url);
+    
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log('❌ Error fetching transaction:', response.status);
+      return null;
+    }
+    
+    const txData = await response.json();
+    
+    // Check if this transaction has PYUSD transfers
+    if (txData.token_transfers && txData.token_transfers.length > 0) {
+      const pyusdTransfer = txData.token_transfers.find((transfer: any) => 
+        transfer.token.address_hash.toLowerCase() === PYUSD_TOKEN_ADDRESS.toLowerCase()
+      );
+      
+      if (pyusdTransfer) {
+        const amount = pyusdTransfer.total.value;
+        const decimals = parseInt(pyusdTransfer.token.decimals);
+        const displayAmount = formatUnits(BigInt(amount), decimals);
+        
+        // Convert timestamp
+        const timestamp = Math.floor(new Date(pyusdTransfer.timestamp).getTime() / 1000);
+        
+        return {
+          hash: transactionHash,
+          from: pyusdTransfer.from.hash,
+          to: pyusdTransfer.to.hash,
+          amount,
+          displayAmount,
+          timestamp: timestamp * 1000,
+          blockNumber: BigInt(pyusdTransfer.block_number),
+          type: 'unknown' as 'sent' | 'received' // Can't determine without context
+        };
       }
     }
-
+    
     return null;
   } catch (error) {
-    console.error('Error fetching transaction:', error);
+    console.error('❌ Error fetching transaction:', error);
     return null;
   }
 }
