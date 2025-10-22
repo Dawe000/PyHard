@@ -20,6 +20,7 @@ type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' |
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
   const [scannedQRData, setScannedQRData] = useState<any>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
 
   const handleQRScanned = (qrData: any) => {
     setScannedQRData(qrData);
@@ -49,9 +50,16 @@ export const MainNavigation = () => {
 
     switch (activeTab) {
       case 'balance':
-        return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
+        return <BalanceScreen navigation={{
+          navigate: (screen: string, params?: any) => {
+            if (screen === 'transactions' && params?.transaction) {
+              setSelectedTransaction(params.transaction);
+            }
+            setActiveTab(screen as TabType);
+          }
+        }} />;
       case 'transactions':
-        return <TransactionsScreen />;
+        return <TransactionsScreen initialTransaction={selectedTransaction} />;
       case 'subaccounts':
         return <SubAccountsScreen />;
       case 'profile':
@@ -66,7 +74,14 @@ export const MainNavigation = () => {
           />
         );
       default:
-        return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
+        return <BalanceScreen navigation={{
+          navigate: (screen: string, params?: any) => {
+            if (screen === 'transactions' && params?.transaction) {
+              setSelectedTransaction(params.transaction);
+            }
+            setActiveTab(screen as TabType);
+          }
+        }} />;
     }
   };
 
@@ -113,7 +128,10 @@ export const MainNavigation = () => {
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'balance' && styles.activeTab]}
-          onPress={() => setActiveTab('balance')}
+          onPress={() => {
+            setSelectedTransaction(null);
+            setActiveTab('balance');
+          }}
         >
           <Ionicons 
             name={getTabIcon('balance')} 
@@ -130,7 +148,10 @@ export const MainNavigation = () => {
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'transactions' && styles.activeTab]}
-          onPress={() => setActiveTab('transactions')}
+          onPress={() => {
+            setSelectedTransaction(null);
+            setActiveTab('transactions');
+          }}
         >
           <Ionicons 
             name={getTabIcon('transactions')} 

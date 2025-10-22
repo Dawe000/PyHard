@@ -25,6 +25,10 @@ import {
 import {
   getTokenBalance,
   getETHBalance,
+  getPYUSDTransfers,
+  formatTimestamp,
+  formatAddress,
+  BlockscoutTokenTransfer,
 } from "@/services/blockscoutService";
 import { ReceiveScreen } from "./ReceiveScreen";
 
@@ -45,6 +49,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isCreatingWallet, setIsCreatingWallet] = useState(false);
   const [showReceiveScreen, setShowReceiveScreen] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<BlockscoutTokenTransfer[]>([]);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
@@ -124,6 +129,11 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
 
       setUsdBalance(balance);
       console.log("✅ Blockscout: PYUSD balance fetched successfully:", balance);
+
+      // Fetch recent transactions
+      const txs = await getPYUSDTransfers(smartWalletAddress, 1, 4); // Get 4 most recent
+      setRecentTransactions(txs);
+      console.log("✅ Blockscout: Loaded", txs.length, "recent transactions");
 
     } catch (error: any) {
       console.error("❌ Error fetching balances:", error);
@@ -361,34 +371,105 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
           </XStack>
         </YStack>
 
-        {/* Recent Activity Placeholder */}
+        {/* Recent Activity */}
         <YStack marginHorizontal={16} marginBottom={32}>
-          <Text fontSize={14} fontWeight="700" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={12} marginLeft={4}>
-            RECENT ACTIVITY
-          </Text>
-          <LinearGradient
-            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={{ borderRadius: 16, padding: 1 }}
-          >
-            <YStack
-              backgroundColor="rgba(10,14,39,0.4)"
-              borderRadius={15}
-              padding={32}
-              alignItems="center"
-              borderWidth={1}
-              borderColor="rgba(0,121,193,0.2)"
-            >
-              <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.3)" />
-              <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
-                No Recent Transactions
-              </Text>
-              <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
-                &gt; Your transaction history will appear here
-              </Text>
+          <XStack justifyContent="space-between" alignItems="center" marginBottom={12} marginLeft={4}>
+            <Text fontSize={14} fontWeight="700" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1}>
+              RECENT ACTIVITY
+            </Text>
+            {recentTransactions.length > 0 && (
+              <TouchableOpacity onPress={() => navigation?.navigate('transactions')}>
+                <XStack alignItems="center" gap={4}>
+                  <Text fontSize={11} fontWeight="600" color="#0079c1" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                    VIEW ALL
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color="#0079c1" />
+                </XStack>
+              </TouchableOpacity>
+            )}
+          </XStack>
+
+          {recentTransactions.length > 0 ? (
+            <YStack gap={8}>
+              {recentTransactions.map((tx) => {
+                const isSent = tx.from.toLowerCase() === smartWalletAddress?.toLowerCase();
+                const amount = (parseInt(tx.value) / Math.pow(10, parseInt(tx.tokenDecimal))).toFixed(2);
+
+                return (
+                  <TouchableOpacity key={tx.hash} onPress={() => navigation?.navigate('transactions', { transaction: tx })}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ borderRadius: 12, padding: 1 }}
+                    >
+                      <YStack
+                        backgroundColor="rgba(10,14,39,0.6)"
+                        borderRadius={11}
+                        padding={12}
+                        borderWidth={1}
+                        borderColor="rgba(0,121,193,0.2)"
+                      >
+                        <XStack justifyContent="space-between" alignItems="center">
+                          <XStack alignItems="center" gap={10} flex={1}>
+                            <YStack
+                              width={32}
+                              height={32}
+                              borderRadius={16}
+                              backgroundColor={isSent ? 'rgba(255,69,58,0.2)' : 'rgba(52,199,89,0.2)'}
+                              alignItems="center"
+                              justifyContent="center"
+                            >
+                              <Ionicons
+                                name={isSent ? "arrow-up" : "arrow-down"}
+                                size={16}
+                                color={isSent ? "#FF453A" : "#34C759"}
+                              />
+                            </YStack>
+                            <YStack flex={1}>
+                              <Text fontSize={13} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={2}>
+                                {isSent ? 'Sent' : 'Received'}
+                              </Text>
+                              <Text fontSize={10} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                                {formatTimestamp(tx.timeStamp)}
+                              </Text>
+                            </YStack>
+                          </XStack>
+                          <Text fontSize={14} fontWeight="600" color={isSent ? "#FF453A" : "#34C759"} fontFamily="SpaceMono_700Bold">
+                            {isSent ? '-' : '+'}{amount} PYUSD
+                          </Text>
+                        </XStack>
+                      </YStack>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              })}
             </YStack>
-          </LinearGradient>
+          ) : (
+            <LinearGradient
+              colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ borderRadius: 16, padding: 1 }}
+            >
+              <YStack
+                backgroundColor="rgba(10,14,39,0.4)"
+                borderRadius={15}
+                padding={32}
+                alignItems="center"
+                borderWidth={1}
+                borderColor="rgba(0,121,193,0.2)"
+              >
+                <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.3)" />
+                <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                  No Recent Transactions
+                </Text>
+                <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                  &gt; Your transaction history will appear here
+                </Text>
+              </YStack>
+            </LinearGradient>
+          )}
         </YStack>
       </ScrollView>
     </SafeAreaView>

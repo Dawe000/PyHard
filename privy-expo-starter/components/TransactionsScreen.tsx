@@ -23,13 +23,17 @@ import {
 import * as Linking from 'expo-linking';
 import { TransactionDetailsModal } from "./TransactionDetailsModal";
 
-export const TransactionsScreen = () => {
+interface TransactionsScreenProps {
+  initialTransaction?: BlockscoutTokenTransfer | null;
+}
+
+export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenProps = {}) => {
   const [transactions, setTransactions] = useState<BlockscoutTokenTransfer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
-  const [selectedTransaction, setSelectedTransaction] = useState<BlockscoutTokenTransfer | null>(null);
-  const [showTransactionModal, setShowTransactionModal] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<BlockscoutTokenTransfer | null>(initialTransaction || null);
+  const [showTransactionModal, setShowTransactionModal] = useState(!!initialTransaction);
 
   const { user } = usePrivy();
   const account = getUserEmbeddedEthereumWallet(user);
@@ -84,6 +88,14 @@ export const TransactionsScreen = () => {
       loadTransactions();
     }
   }, [smartWalletAddress, loadTransactions]);
+
+  // Open modal if initialTransaction is provided
+  useEffect(() => {
+    if (initialTransaction) {
+      setSelectedTransaction(initialTransaction);
+      setShowTransactionModal(true);
+    }
+  }, [initialTransaction]);
 
   const handleRefresh = () => {
     loadTransactions(true);
