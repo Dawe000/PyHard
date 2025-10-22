@@ -1,18 +1,16 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { 
-  Text, 
-  View, 
-  StyleSheet, 
-  SafeAreaView, 
+import {
+  StyleSheet,
+  SafeAreaView,
   TouchableOpacity,
   Alert,
-  Dimensions,
   ScrollView,
   RefreshControl
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import { YStack, XStack, Text } from "tamagui";
 
 import {
   usePrivy,
@@ -24,8 +22,6 @@ import {
   getOrCreateSmartWallet,
   getSmartWalletPYUSDBalance,
 } from "@/services/smartWallet";
-
-const { width, height } = Dimensions.get('window');
 
 // Arbitrum Sepolia network details
 const ARBITRUM_SEPOLIA_CHAIN_ID = "421614";
@@ -76,16 +72,16 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
       console.log("🏗️ Initializing SmartWallet for:", account.address);
       // TODO: Replace with actual Privy token when available
       const walletInfo = await getOrCreateSmartWallet(account.address, "placeholder-token");
-      
+
       setSmartWalletAddress(walletInfo.address);
-      
+
       if (walletInfo.isNew) {
         Alert.alert(
           "SmartWallet Created!",
           `Your SmartWallet has been created at ${walletInfo.address.slice(0, 10)}...`
         );
       }
-      
+
       console.log("✅ SmartWallet initialized:", walletInfo.address);
     } catch (error: any) {
       console.error("❌ Error initializing SmartWallet:", error);
@@ -114,25 +110,25 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     if (isManualRefresh) {
       setIsRefreshing(true);
     }
-    
+
     try {
       const provider = await wallets[0].getProvider();
-      
+
       // Check current network
       const networkId = await provider.request({
         method: "net_version",
         params: [],
       });
-      
+
       if (networkId !== ARBITRUM_SEPOLIA_CHAIN_ID) {
         console.log("⚠️ Wallet is not on Arbitrum Sepolia network!");
         Alert.alert(
-          "Wrong Network", 
+          "Wrong Network",
           `Your wallet is on network ${networkId}, but Arbitrum Sepolia is ${ARBITRUM_SEPOLIA_CHAIN_ID}. Please switch networks.`
         );
         return;
       }
-      
+
       // Fetch PYUSD balance from SmartWallet
       const balance = await getSmartWalletPYUSDBalance(
         smartWalletAddress,
@@ -140,10 +136,10 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
         PYUSD_CONTRACT_ADDRESS,
         PYUSD_DECIMALS
       );
-      
+
       setUsdBalance(balance);
       console.log("✅ SmartWallet balance fetched successfully:", balance);
-      
+
     } catch (error: any) {
       console.error("❌ Error fetching balances:", error);
       Alert.alert("Error", `Failed to fetch balances: ${error.message}`);
@@ -172,7 +168,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
   const copyAddress = useCallback(async () => {
     const addressToCopy = smartWalletAddress || account?.address;
     if (!addressToCopy) return;
-    
+
     try {
       await Clipboard.setStringAsync(addressToCopy);
       Alert.alert("Copied", "SmartWallet address copied to clipboard");
@@ -186,6 +182,9 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
+  const emailAccount = user?.linked_accounts?.find((account: any) => account.type === 'email') as { address?: string } | undefined;
+  const userEmail = emailAccount?.address;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -194,84 +193,206 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => fetchBalances(true)}
+            tintColor="#0079c1"
           />
         }
       >
         {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <Text style={styles.greeting}>Hello, {user?.email?.split('@')[0] || 'User'}</Text>
-            <TouchableOpacity onPress={copyAddress} style={styles.addressButton}>
-              <Text style={styles.addressText}>{formatAddress(smartWalletAddress || account?.address || "")}</Text>
-              <Ionicons name="copy-outline" size={16} color="#0070BA" />
-            </TouchableOpacity>
-          </View>
-          {isCreatingWallet && (
-            <View style={styles.walletCreationBanner}>
-              <Ionicons name="hourglass-outline" size={16} color="#0070BA" />
-              <Text style={styles.walletCreationText}>Creating your SmartWallet...</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Balance Card */}
-        <View style={styles.balanceCard}>
+        <YStack paddingHorizontal={16} paddingTop={20} paddingBottom={10}>
           <LinearGradient
-            colors={['#0070BA', '#0056B3']}
-            style={styles.balanceGradient}
+            colors={['rgba(0,121,193,0.1)', 'rgba(0,48,135,0.05)']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 16, padding: 1 }}
           >
-            <Text style={styles.balanceLabel}>Your Balance</Text>
-            <Text style={styles.balanceAmount}>${usdBalance}</Text>
+            <YStack
+              backgroundColor="rgba(10,14,39,0.6)"
+              borderRadius={15}
+              padding={16}
+              borderWidth={1}
+              borderColor="rgba(0,121,193,0.2)"
+            >
+              <XStack justifyContent="space-between" alignItems="center" marginBottom={12}>
+                <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                  HELLO, {userEmail?.split('@')[0]?.toUpperCase() || 'USER'}
+                </Text>
+              </XStack>
+              <TouchableOpacity onPress={copyAddress}>
+                <XStack alignItems="center" gap={8} padding={8} backgroundColor="rgba(0,121,193,0.1)" borderRadius={8}>
+                  <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
+                    &gt; WALLET
+                  </Text>
+                  <Text fontSize={12} color="#0079c1" fontFamily="SpaceMono_400Regular" flex={1}>
+                    {formatAddress(smartWalletAddress || account?.address || "")}
+                  </Text>
+                  <Ionicons name="copy-outline" size={16} color="#0079c1" />
+                </XStack>
+              </TouchableOpacity>
+              {isCreatingWallet && (
+                <YStack marginTop={12} padding={12} backgroundColor="rgba(0,121,193,0.15)" borderRadius={8}>
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="hourglass-outline" size={16} color="#0079c1" />
+                    <Text fontSize={12} color="#0079c1" fontFamily="SpaceMono_400Regular">
+                      &gt; Creating your SmartWallet...
+                    </Text>
+                  </XStack>
+                </YStack>
+              )}
+            </YStack>
           </LinearGradient>
-        </View>
+        </YStack>
 
+        {/* Balance Card */}
+        <YStack marginHorizontal={16} marginVertical={16}>
+          <LinearGradient
+            colors={['rgba(0,121,193,0.3)', 'rgba(0,48,135,0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 20, padding: 2 }}
+          >
+            <YStack
+              backgroundColor="rgba(10,14,39,0.8)"
+              borderRadius={18}
+              padding={32}
+              alignItems="center"
+              borderWidth={1}
+              borderColor="rgba(0,121,193,0.3)"
+            >
+              <Text fontSize={12} fontWeight="700" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={2} marginBottom={12}>
+                YOUR BALANCE
+              </Text>
+              <Text fontSize={48} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={8}>
+                ${usdBalance}
+              </Text>
+              <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
+                PYUSD
+              </Text>
+            </YStack>
+          </LinearGradient>
+        </YStack>
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionButtons}>
-            <TouchableOpacity 
-              style={styles.actionButton} 
+        <YStack marginHorizontal={16} marginBottom={16}>
+          <Text fontSize={14} fontWeight="700" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={12} marginLeft={4}>
+            QUICK ACTIONS
+          </Text>
+          <XStack gap={12} justifyContent="space-between">
+            <TouchableOpacity
+              style={{ flex: 1 }}
               onPress={() => {
                 console.log("🚀 Send button pressed!");
                 console.log("📍 Navigation object:", navigation);
                 navigation?.navigate?.('send');
               }}
             >
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="send" size={24} color="#0070BA" />
-                <Text style={styles.actionButtonText}>Send</Text>
-              </View>
+              <LinearGradient
+                colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 16, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={15}
+                  padding={16}
+                  alignItems="center"
+                  gap={8}
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="send" size={28} color="#0079c1" />
+                  <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                    SEND
+                  </Text>
+                </YStack>
+              </LinearGradient>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Add funds feature coming soon!")}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="add-circle" size={24} color="#34C759" />
-                <Text style={styles.actionButtonText}>Add Funds</Text>
-              </View>
+
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => Alert.alert("Coming Soon", "Add funds feature coming soon!")}
+            >
+              <LinearGradient
+                colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 16, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={15}
+                  padding={16}
+                  alignItems="center"
+                  gap={8}
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="add-circle" size={28} color="#34C759" />
+                  <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                    ADD FUNDS
+                  </Text>
+                </YStack>
+              </LinearGradient>
             </TouchableOpacity>
-            
-            
-            <TouchableOpacity style={styles.actionButton} onPress={() => Alert.alert("Coming Soon", "Receive feature coming soon!")}>
-              <View style={styles.actionButtonContent}>
-                <Ionicons name="arrow-down" size={24} color="#0070BA" />
-                <Text style={styles.actionButtonText}>Receive</Text>
-              </View>
+
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              onPress={() => Alert.alert("Coming Soon", "Receive feature coming soon!")}
+            >
+              <LinearGradient
+                colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={{ borderRadius: 16, padding: 1 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={15}
+                  padding={16}
+                  alignItems="center"
+                  gap={8}
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                >
+                  <Ionicons name="arrow-down" size={28} color="#0079c1" />
+                  <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                    RECEIVE
+                  </Text>
+                </YStack>
+              </LinearGradient>
             </TouchableOpacity>
-          </View>
-        </View>
+          </XStack>
+        </YStack>
 
         {/* Recent Activity Placeholder */}
-        <View style={styles.recentActivity}>
-          <Text style={styles.sectionTitle}>Recent Activity</Text>
-          <View style={styles.activityPlaceholder}>
-            <Ionicons name="time-outline" size={48} color="#C7C7CC" />
-            <Text style={styles.placeholderText}>No recent transactions</Text>
-            <Text style={styles.placeholderSubtext}>Your transaction history will appear here</Text>
-          </View>
-        </View>
+        <YStack marginHorizontal={16} marginBottom={32}>
+          <Text fontSize={14} fontWeight="700" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={12} marginLeft={4}>
+            RECENT ACTIVITY
+          </Text>
+          <LinearGradient
+            colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 16, padding: 1 }}
+          >
+            <YStack
+              backgroundColor="rgba(10,14,39,0.4)"
+              borderRadius={15}
+              padding={32}
+              alignItems="center"
+              borderWidth={1}
+              borderColor="rgba(0,121,193,0.2)"
+            >
+              <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.3)" />
+              <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                No Recent Transactions
+              </Text>
+              <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                &gt; Your transaction history will appear here
+              </Text>
+            </YStack>
+          </LinearGradient>
+        </YStack>
       </ScrollView>
     </SafeAreaView>
   );
@@ -280,145 +401,9 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#0a0e27',
   },
   scrollView: {
     flex: 1,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  greeting: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  addressButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  addressText: {
-    fontSize: 12,
-    color: '#0070BA',
-    marginRight: 4,
-    fontFamily: 'monospace',
-  },
-  walletCreationBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E3F2FD',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  walletCreationText: {
-    fontSize: 14,
-    color: '#0070BA',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  balanceCard: {
-    marginHorizontal: 20,
-    marginVertical: 20,
-    borderRadius: 16,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  balanceGradient: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  balanceLabel: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 36,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  balanceSubtext: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  quickActions: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A1A',
-    marginBottom: 16,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionButton: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  actionButtonContent: {
-    alignItems: 'center',
-  },
-  actionButtonText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#0070BA',
-    marginTop: 8,
-  },
-  recentActivity: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-  },
-  activityPlaceholder: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  placeholderText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#8E8E93',
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  placeholderSubtext: {
-    fontSize: 14,
-    color: '#C7C7CC',
-    textAlign: 'center',
   },
 });

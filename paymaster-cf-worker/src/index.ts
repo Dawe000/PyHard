@@ -134,6 +134,9 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     });
 
     const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    console.log('🔍 Paymaster account address:', relayerAccount.address);
+    console.log('🔍 Private key (first 10 chars):', env.PAYMASTER_PRIVATE_KEY.substring(0, 10) + '...');
+    
     const walletClient = createWalletClient({
       account: relayerAccount,
       chain: arbitrumSepolia,
@@ -167,16 +170,133 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
 
     // Submit transaction TO USER'S EOA (not SmartWallet!) with EIP-7702 authorization
     console.log('🚀 Submitting transaction TO USER EOA with EIP-7702 authorization...');
+    
+    // Format the authorization list properly for viem
+    const authorizationList = [{
+      chainId: BigInt(sponsorRequest.signature.chain_id),
+      address: sponsorRequest.signature.contract as `0x${string}`,
+      nonce: BigInt(sponsorRequest.signature.nonce),
+      r: sponsorRequest.signature.r as `0x${string}`,
+      s: sponsorRequest.signature.s as `0x${string}`,
+      yParity: sponsorRequest.signature.y_parity
+    }];
+    
     console.log('📝 Transaction details:', {
       to: sponsorRequest.eoaAddress, // TO USER'S EOA!
       data: executeData, // SmartWallet.execute() call
-      authorizationList: [sponsorRequest.signature] // EIP-7702 delegation
+      authorizationList: authorizationList.map(auth => ({
+        chainId: auth.chainId.toString(),
+        address: auth.address,
+        nonce: auth.nonce.toString(),
+        r: auth.r,
+        s: auth.s,
+        yParity: auth.yParity
+      })) // EIP-7702 delegation (converted for logging)
+    });
+    
+    // Debug: Check if the authorization signature is valid
+    console.log('🔍 Authorization signature validation:');
+    console.log('🔍 - Contract address:', authorizationList[0].address);
+    console.log('🔍 - Chain ID:', authorizationList[0].chainId.toString());
+    console.log('🔍 - Nonce:', authorizationList[0].nonce.toString());
+    console.log('🔍 - R:', authorizationList[0].r);
+    console.log('🔍 - S:', authorizationList[0].s);
+    console.log('🔍 - Y Parity:', authorizationList[0].yParity);
+    
+    // Debug: Check EOA nonce to see if it matches authorization
+    try {
+      const eoaNonce = await publicClient.getTransactionCount({
+        address: sponsorRequest.eoaAddress as `0x${string}`
+      });
+      console.log('🔍 EOA nonce:', eoaNonce);
+      console.log('🔍 Authorization nonce:', authorizationList[0].nonce.toString());
+      console.log('🔍 Nonce matches:', eoaNonce === Number(authorizationList[0].nonce));
+      
+      // Check if EOA has any transaction history
+      const eoaNoncePending = await publicClient.getTransactionCount({
+        address: sponsorRequest.eoaAddress as `0x${string}`,
+        blockTag: 'pending'
+      });
+      console.log('🔍 EOA pending nonce:', eoaNoncePending);
+      
+      // The issue might be that we need to use the EOA's current nonce, not 0
+      if (eoaNonce > 0) {
+        console.log('⚠️ EOA has transaction history - authorization nonce 0 might be invalid');
+        console.log('💡 Suggestion: Use current EOA nonce for authorization');
+      }
+    } catch (error) {
+      console.log('❌ Error checking EOA nonce:', error);
+    }
+
+    // EIP-7702 flow: First submit EIP-7702 authorization, then call EOADelegation
+    console.log('🚀 Step 1: Submitting EIP-7702 authorization to delegate EOA to EOADelegation...');
+    
+    // First transaction: Submit EIP-7702 authorization to delegate EOA to EOADelegation
+    const authHash = await walletClient.sendTransaction({
+      to: sponsorRequest.eoaAddress as `0x${string}`, // TO EOA
+      data: '0x', // Empty data for EIP-7702 authorization
+      authorizationList: authorizationList, // EIP-7702 authorization (delegates EOA to EOADelegation)
+      value: 0n
+    });
+    
+    console.log('✅ EIP-7702 authorization submitted:', authHash);
+    
+    // Wait for authorization to be mined
+    console.log('⏳ Waiting for EIP-7702 authorization to be mined...');
+    await publicClient.waitForTransactionReceipt({ hash: authHash });
+    console.log('✅ EIP-7702 authorization confirmed');
+    
+    // Second transaction: Call EOADelegation.executeOnSmartWallet
+    console.log('🚀 Step 2: Calling EOADelegation.executeOnSmartWallet...');
+    console.log('🔍 Paymaster address:', relayerAccount.address);
+    console.log('🔍 SmartWallet address:', sponsorRequest.smartWalletAddress);
+    console.log('🔍 Execute data length:', executeData.length);
+    console.log('🔍 Nonce:', sponsorRequest.signature.nonce);
+    console.log('🔍 Deadline:', sponsorRequest.deadline);
+    
+    // Check if paymaster is authorized in the contract
+    try {
+      const isAuthorized = await publicClient.readContract({
+        address: env.EOA_DELEGATION_ADDRESS as `0x${string}`,
+        abi: [{
+          type: 'function',
+          name: 'authorizedPaymasters',
+          inputs: [{ type: 'address', name: 'paymaster' }],
+          outputs: [{ type: 'bool' }]
+        }],
+        functionName: 'authorizedPaymasters',
+        args: [relayerAccount.address]
+      });
+      console.log('🔍 Paymaster authorized in contract:', isAuthorized);
+    } catch (error) {
+      console.log('❌ Error checking paymaster authorization:', error);
+    }
+    
+    const delegationData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'executeOnSmartWallet',
+        inputs: [
+          { type: 'address', name: 'smartWallet' },
+          { type: 'bytes', name: 'data' },
+          { type: 'uint256', name: 'nonce' },
+          { type: 'uint256', name: 'deadline' },
+          { type: 'bytes', name: 'signature' }
+        ]
+      }],
+      functionName: 'executeOnSmartWallet',
+      args: [
+        sponsorRequest.smartWalletAddress as `0x${string}`, // SmartWallet
+        executeData as `0x${string}`, // SmartWallet.execute() call data
+        BigInt(sponsorRequest.signature.nonce), // Nonce
+        BigInt(sponsorRequest.deadline), // Deadline
+        '0x' // Empty signature - paymaster is authorized
+      ]
     });
     
     const hash = await walletClient.sendTransaction({
-      to: sponsorRequest.eoaAddress as `0x${string}`, // TO USER'S EOA!
-      data: executeData, // SmartWallet.execute() call data
-      authorizationList: [sponsorRequest.signature], // EIP-7702 delegation
+      to: sponsorRequest.eoaAddress as `0x${string}`, // TO EOA (now delegated to EOADelegation)!
+      data: delegationData, // EOADelegation.executeOnSmartWallet() call data
       value: 0n
     });
 

@@ -95,7 +95,7 @@ export async function sendPYUSD(
       functionData: transferData,
       value: "0",
       nonce: "0", // Not needed for EIP-7702
-      deadline: "0", // Not needed for EIP-7702
+      deadline: Math.floor(Date.now() / 1000 + 600).toString(), // 10 minutes from now
       signature: authorization.data.authorization, // EIP-7702 authorization signature
       chainId: "421614", // Arbitrum Sepolia
       eip7702Authorization: authorization, // Include full authorization object

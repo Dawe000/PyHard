@@ -4,7 +4,7 @@
 export const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
 
 // EOA Delegation contract address (from CF Worker deployment)
-export const EOA_DELEGATION_ADDRESS = "0x3a74724db1a7689b844c7345C4569e30a6a9c5A7";
+export const EOA_DELEGATION_ADDRESS = "0x58b15c7291c316e0b3c8af875de54f07e0e4b05d";
 
 // SmartWallet Factory contract address
 export const SMART_WALLET_FACTORY_ADDRESS = "0x1f33b3edae1a462a2eafad8531ddbe6ab72f2bef";

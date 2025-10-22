@@ -1,14 +1,14 @@
 import React, { useState } from "react";
-import { 
-  Text, 
-  View, 
-  StyleSheet, 
-  SafeAreaView, 
+import {
+  StyleSheet,
+  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Alert
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { YStack, XStack, Text } from "tamagui";
+import { LinearGradient } from "expo-linear-gradient";
 
 export const TransactionsScreen = () => {
   const [selectedTab, setSelectedTab] = useState<'transactions' | 'contracts'>('transactions');
@@ -89,133 +89,229 @@ export const TransactionsScreen = () => {
       case 'receive':
         return '#34C759';
       case 'swap':
-        return '#0070BA';
+        return '#0079c1';
       default:
         return '#8E8E93';
     }
   };
 
   const renderTransaction = (transaction: any) => (
-    <TouchableOpacity 
-      key={transaction.id} 
-      style={styles.transactionItem}
+    <TouchableOpacity
+      key={transaction.id}
       onPress={() => Alert.alert("Transaction Details", `Hash: ${transaction.hash}\nStatus: ${transaction.status}`)}
     >
-      <View style={styles.transactionLeft}>
-        <View style={[styles.transactionIcon, { backgroundColor: getTransactionColor(transaction.type) + '20' }]}>
-          <Ionicons 
-            name={getTransactionIcon(transaction.type)} 
-            size={20} 
-            color={getTransactionColor(transaction.type)} 
-          />
-        </View>
-        <View style={styles.transactionDetails}>
-          <Text style={styles.transactionType}>
-            {transaction.type === 'send' ? 'Sent to' : 
-             transaction.type === 'receive' ? 'Received from' : 
-             'Swapped to'} {transaction.to || transaction.from}
-          </Text>
-          <Text style={styles.transactionTime}>{transaction.timestamp}</Text>
-        </View>
-      </View>
-      <View style={styles.transactionRight}>
-        <Text style={[
-          styles.transactionAmount,
-          { color: transaction.type === 'receive' ? '#34C759' : '#FF3B30' }
-        ]}>
-          {transaction.type === 'receive' ? '+' : '-'}${transaction.amount}
-        </Text>
-        <View style={[styles.statusBadge, { backgroundColor: '#34C759' + '20' }]}>
-          <Text style={[styles.statusText, { color: '#34C759' }]}>
-            {transaction.status}
-          </Text>
-        </View>
-      </View>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: 12, padding: 1, marginBottom: 12 }}
+      >
+        <YStack
+          backgroundColor="rgba(10,14,39,0.6)"
+          borderRadius={11}
+          padding={16}
+          borderWidth={1}
+          borderColor="rgba(0,121,193,0.2)"
+        >
+          <XStack justifyContent="space-between" alignItems="center">
+            <XStack alignItems="center" gap={12} flex={1}>
+              <YStack
+                width={40}
+                height={40}
+                borderRadius={20}
+                backgroundColor={getTransactionColor(transaction.type) + '20'}
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons
+                  name={getTransactionIcon(transaction.type)}
+                  size={20}
+                  color={getTransactionColor(transaction.type)}
+                />
+              </YStack>
+              <YStack flex={1}>
+                <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={4}>
+                  {transaction.type === 'send' ? 'Sent to' :
+                   transaction.type === 'receive' ? 'Received from' :
+                   'Swapped to'} {transaction.to || transaction.from}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                  &gt; {transaction.timestamp}
+                </Text>
+              </YStack>
+            </XStack>
+            <YStack alignItems="flex-end" gap={4}>
+              <Text
+                fontSize={16}
+                fontWeight="700"
+                color={transaction.type === 'receive' ? '#34C759' : '#FF3B30'}
+                fontFamily="SpaceGrotesk_700Bold"
+              >
+                {transaction.type === 'receive' ? '+' : '-'}${transaction.amount}
+              </Text>
+              <YStack backgroundColor="rgba(52,199,89,0.2)" paddingHorizontal={8} paddingVertical={4} borderRadius={12}>
+                <Text fontSize={10} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                  {transaction.status.toUpperCase()}
+                </Text>
+              </YStack>
+            </YStack>
+          </XStack>
+        </YStack>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   const renderContract = (contract: any) => (
-    <TouchableOpacity 
-      key={contract.id} 
-      style={styles.contractItem}
+    <TouchableOpacity
+      key={contract.id}
       onPress={() => Alert.alert("Contract Details", `Address: ${contract.address}\nMethod: ${contract.method}`)}
     >
-      <View style={styles.contractLeft}>
-        <View style={[styles.contractIcon, { backgroundColor: '#0070BA' + '20' }]}>
-          <Ionicons name="code-slash" size={20} color="#0070BA" />
-        </View>
-        <View style={styles.contractDetails}>
-          <Text style={styles.contractName}>{contract.name}</Text>
-          <Text style={styles.contractMethod}>{contract.method}</Text>
-          <Text style={styles.contractTime}>{contract.timestamp}</Text>
-        </View>
-      </View>
-      <View style={styles.contractRight}>
-        <View style={[styles.statusBadge, { backgroundColor: '#34C759' + '20' }]}>
-          <Text style={[styles.statusText, { color: '#34C759' }]}>
-            {contract.status}
-          </Text>
-        </View>
-      </View>
+      <LinearGradient
+        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: 12, padding: 1, marginBottom: 12 }}
+      >
+        <YStack
+          backgroundColor="rgba(10,14,39,0.6)"
+          borderRadius={11}
+          padding={16}
+          borderWidth={1}
+          borderColor="rgba(0,121,193,0.2)"
+        >
+          <XStack justifyContent="space-between" alignItems="center">
+            <XStack alignItems="center" gap={12} flex={1}>
+              <YStack
+                width={40}
+                height={40}
+                borderRadius={20}
+                backgroundColor="rgba(0,121,193,0.2)"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="code-slash" size={20} color="#0079c1" />
+              </YStack>
+              <YStack flex={1}>
+                <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={2}>
+                  {contract.name}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular" marginBottom={2}>
+                  {contract.method}
+                </Text>
+                <Text fontSize={11} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular">
+                  &gt; {contract.timestamp}
+                </Text>
+              </YStack>
+            </XStack>
+            <YStack backgroundColor="rgba(52,199,89,0.2)" paddingHorizontal={8} paddingVertical={4} borderRadius={12}>
+              <Text fontSize={10} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                {contract.status.toUpperCase()}
+              </Text>
+            </YStack>
+          </XStack>
+        </YStack>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Activity</Text>
-        <TouchableOpacity onPress={() => Alert.alert("Coming Soon", "Export feature coming soon!")}>
-          <Ionicons name="download-outline" size={24} color="#0070BA" />
-        </TouchableOpacity>
-      </View>
+      <YStack paddingHorizontal={16} paddingTop={20} paddingBottom={10}>
+        <XStack justifyContent="space-between" alignItems="center" marginBottom={16}>
+          <Text fontSize={24} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+            ACTIVITY
+          </Text>
+          <TouchableOpacity onPress={() => Alert.alert("Coming Soon", "Export feature coming soon!")}>
+            <Ionicons name="download-outline" size={24} color="#0079c1" />
+          </TouchableOpacity>
+        </XStack>
 
-      {/* Tab Selector */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'transactions' && styles.activeTab]}
-          onPress={() => setSelectedTab('transactions')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'transactions' && styles.activeTabText]}>
-            Transactions
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.tab, selectedTab === 'contracts' && styles.activeTab]}
-          onPress={() => setSelectedTab('contracts')}
-        >
-          <Text style={[styles.tabText, selectedTab === 'contracts' && styles.activeTabText]}>
-            Contracts
-          </Text>
-        </TouchableOpacity>
-      </View>
+        {/* Tab Selector */}
+        <XStack gap={8} padding={4} backgroundColor="rgba(255,255,255,0.1)" borderRadius={12}>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setSelectedTab('transactions')}
+          >
+            <YStack
+              backgroundColor={selectedTab === 'transactions' ? 'rgba(0,121,193,0.3)' : 'transparent'}
+              paddingVertical={12}
+              borderRadius={8}
+              alignItems="center"
+              borderWidth={selectedTab === 'transactions' ? 1 : 0}
+              borderColor="rgba(0,121,193,0.5)"
+            >
+              <Text
+                fontSize={14}
+                fontWeight="600"
+                color={selectedTab === 'transactions' ? '#0079c1' : 'rgba(255,255,255,0.6)'}
+                fontFamily="SpaceGrotesk_600SemiBold"
+                letterSpacing={0.5}
+              >
+                TRANSACTIONS
+              </Text>
+            </YStack>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            onPress={() => setSelectedTab('contracts')}
+          >
+            <YStack
+              backgroundColor={selectedTab === 'contracts' ? 'rgba(0,121,193,0.3)' : 'transparent'}
+              paddingVertical={12}
+              borderRadius={8}
+              alignItems="center"
+              borderWidth={selectedTab === 'contracts' ? 1 : 0}
+              borderColor="rgba(0,121,193,0.5)"
+            >
+              <Text
+                fontSize={14}
+                fontWeight="600"
+                color={selectedTab === 'contracts' ? '#0079c1' : 'rgba(255,255,255,0.6)'}
+                fontFamily="SpaceGrotesk_600SemiBold"
+                letterSpacing={0.5}
+              >
+                CONTRACTS
+              </Text>
+            </YStack>
+          </TouchableOpacity>
+        </XStack>
+      </YStack>
 
       {/* Content */}
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingHorizontal: 16 }}>
         {selectedTab === 'transactions' ? (
-          <View>
+          <YStack>
             {mockTransactions.length > 0 ? (
               mockTransactions.map(renderTransaction)
             ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="receipt-outline" size={48} color="#C7C7CC" />
-                <Text style={styles.emptyTitle}>No transactions yet</Text>
-                <Text style={styles.emptySubtitle}>Your transaction history will appear here</Text>
-              </View>
+              <YStack alignItems="center" paddingVertical={48}>
+                <Ionicons name="receipt-outline" size={48} color="rgba(255,255,255,0.3)" />
+                <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                  No Transactions Yet
+                </Text>
+                <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                  &gt; Your transaction history will appear here
+                </Text>
+              </YStack>
             )}
-          </View>
+          </YStack>
         ) : (
-          <View>
+          <YStack>
             {mockContracts.length > 0 ? (
               mockContracts.map(renderContract)
             ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="code-slash" size={48} color="#C7C7CC" />
-                <Text style={styles.emptyTitle}>No contract interactions</Text>
-                <Text style={styles.emptySubtitle}>Your contract interactions will appear here</Text>
-              </View>
+              <YStack alignItems="center" paddingVertical={48}>
+                <Ionicons name="code-slash" size={48} color="rgba(255,255,255,0.3)" />
+                <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                  No Contract Interactions
+                </Text>
+                <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                  &gt; Your contract interactions will appear here
+                </Text>
+              </YStack>
             )}
-          </View>
+          </YStack>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -225,175 +321,9 @@ export const TransactionsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#0a0e27',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: '#E5E5EA',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
+  scrollView: {
     flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  activeTab: {
-    backgroundColor: '#FFFFFF',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  tabText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#8E8E93',
-  },
-  activeTabText: {
-    color: '#0070BA',
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  transactionItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionType: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1A1A1A',
-    marginBottom: 4,
-  },
-  transactionTime: {
-    fontSize: 14,
-    color: '#8E8E93',
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  contractItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-  },
-  contractLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  contractIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  contractDetails: {
-    flex: 1,
-  },
-  contractName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1A1A1A',
-    marginBottom: 2,
-  },
-  contractMethod: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 2,
-  },
-  contractTime: {
-    fontSize: 12,
-    color: '#C7C7CC',
-  },
-  contractRight: {
-    alignItems: 'flex-end',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#8E8E93',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#C7C7CC',
-    textAlign: 'center',
   },
 });

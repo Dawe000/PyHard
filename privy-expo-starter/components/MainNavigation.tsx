@@ -13,7 +13,7 @@ import { SubAccountsScreen } from "./SubAccountsScreen";
 import SendScreen from "./SendScreen";
 import { ProfileScreen } from "./ProfileScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -28,6 +28,8 @@ export const MainNavigation = () => {
         return <SubAccountsScreen />;
       case 'profile':
         return <ProfileScreen />;
+      case 'send':
+        return <SendScreen />;
       default:
         return <BalanceScreen navigation={{ navigate: (screen: string) => setActiveTab(screen as TabType) }} />;
     }
@@ -115,6 +117,7 @@ export const MainNavigation = () => {
           />
           <Text style={[
             styles.tabLabel,
+            styles.subAccountsLabel,
             activeTab === 'subaccounts' && styles.activeTabLabel
           ]}>
             {getTabLabel('subaccounts')}
@@ -145,24 +148,24 @@ export const MainNavigation = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F9FC',
+    backgroundColor: '#0a0e27',
   },
   content: {
     flex: 1,
   },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(10,14,39,0.95)',
     borderTopWidth: 1,
-    borderTopColor: '#E5E5EA',
-    paddingTop: 8,
-    paddingBottom: 8,
+    borderTopColor: 'rgba(0,121,193,0.2)',
+    paddingTop: 12,
+    paddingBottom: 12,
     paddingHorizontal: 20,
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowColor: '#0079c1',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   tab: {
     flex: 1,
@@ -173,13 +176,18 @@ const styles = StyleSheet.create({
     // Active tab styling is handled by icon and text colors
   },
   tabLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#8E8E93',
+    fontSize: 10,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.5)',
     marginTop: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   activeTabLabel: {
-    color: '#0070BA',
-    fontWeight: '600',
+    color: '#0079c1',
+    fontWeight: '700',
+  },
+  subAccountsLabel: {
+    fontSize: 8,
   },
 });

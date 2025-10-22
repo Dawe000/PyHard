@@ -10,7 +10,7 @@ describe("EIP-7702 Real Delegation Test", async function () {
   // Contract addresses from deployment
   const SMART_WALLET_ADDRESS = "0x188CB9276bb75992A6c1Af2443e293431307382a";
   const PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1";
-  const EOA_DELEGATION_ADDRESS = "0x02d6ab26b2b5448a0b123725926c5b9c2bc6faa6";
+  const EOA_DELEGATION_ADDRESS = "0x67e8b159534f197cfd368210db6f48a59422ff18";
   
   // User account (Hardhat account #1)
   const userPrivateKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";

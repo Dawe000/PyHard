@@ -69,7 +69,7 @@ async function main() {
   console.log("   Amount: Any amount (e.g., 100 PYUSD)");
   
   console.log("\n📋 Contract addresses for CF Worker:");
-  console.log("   EOA_DELEGATION_ADDRESS = \"0x02d6ab26b2b5448a0b123725926c5b9c2bc6faa6\"");
+  console.log("   EOA_DELEGATION_ADDRESS = \"0x67e8b159534f197cfd368210db6f48a59422ff18\"");
   console.log("   EIP7702_PAYMASTER_ADDRESS = \"0x937884bf26c66d53aeb6a1a3bf02cdbb4bc0d8ee\"");
   console.log("   SMART_WALLET_FACTORY_ADDRESS = \"0xe16ae63bf10ad8e0522f7b79dc21fdc72f9e86d9\"");
   console.log("   PYUSD_ADDRESS = \"0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1\"");
