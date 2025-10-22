@@ -22,6 +22,10 @@ import {
   getOrCreateSmartWallet,
   getSmartWalletPYUSDBalance,
 } from "@/services/smartWallet";
+import {
+  getTokenBalance,
+  getETHBalance,
+} from "@/services/blockscoutService";
 import { ReceiveScreen } from "./ReceiveScreen";
 
 // Arbitrum Sepolia network details
@@ -114,33 +118,12 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     }
 
     try {
-      const provider = await wallets[0].getProvider();
-
-      // Check current network
-      const networkId = await provider.request({
-        method: "net_version",
-        params: [],
-      });
-
-      if (networkId !== ARBITRUM_SEPOLIA_CHAIN_ID) {
-        console.log("⚠️ Wallet is not on Arbitrum Sepolia network!");
-        Alert.alert(
-          "Wrong Network",
-          `Your wallet is on network ${networkId}, but Arbitrum Sepolia is ${ARBITRUM_SEPOLIA_CHAIN_ID}. Please switch networks.`
-        );
-        return;
-      }
-
-      // Fetch PYUSD balance from SmartWallet
-      const balance = await getSmartWalletPYUSDBalance(
-        smartWalletAddress,
-        provider,
-        PYUSD_CONTRACT_ADDRESS,
-        PYUSD_DECIMALS
-      );
+      // Fetch PYUSD balance using Blockscout API
+      console.log("📊 Fetching balance via Blockscout API...");
+      const balance = await getTokenBalance(smartWalletAddress);
 
       setUsdBalance(balance);
-      console.log("✅ SmartWallet balance fetched successfully:", balance);
+      console.log("✅ Blockscout: PYUSD balance fetched successfully:", balance);
 
     } catch (error: any) {
       console.error("❌ Error fetching balances:", error);
@@ -275,6 +258,12 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
               <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
                 PYUSD
               </Text>
+              <XStack alignItems="center" gap={6} marginTop={12} padding={8} backgroundColor="rgba(0,121,193,0.15)" borderRadius={8}>
+                <Ionicons name="shield-checkmark" size={14} color="#0079c1" />
+                <Text fontSize={10} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular">
+                  &gt; Live data via Blockscout
+                </Text>
+              </XStack>
             </YStack>
           </LinearGradient>
         </YStack>
