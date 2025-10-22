@@ -21,6 +21,7 @@ export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
   const [scannedQRData, setScannedQRData] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [previousTab, setPreviousTab] = useState<TabType>('balance');
 
   const handleQRScanned = (qrData: any) => {
     setScannedQRData(qrData);
@@ -55,6 +56,7 @@ export const MainNavigation = () => {
             if (screen === 'transactions' && params?.transaction) {
               setSelectedTransaction(params.transaction);
             }
+            setPreviousTab(activeTab);
             setActiveTab(screen as TabType);
           }
         }} />;
@@ -65,7 +67,7 @@ export const MainNavigation = () => {
       case 'profile':
         return <ProfileScreen />;
       case 'send':
-        return <SendScreen />;
+        return <SendScreen onBack={() => setActiveTab(previousTab)} />;
       case 'scan':
         return (
           <QRScannerScreen
@@ -130,6 +132,7 @@ export const MainNavigation = () => {
           style={[styles.tab, activeTab === 'balance' && styles.activeTab]}
           onPress={() => {
             setSelectedTransaction(null);
+            setPreviousTab(activeTab);
             setActiveTab('balance');
           }}
         >
@@ -150,6 +153,7 @@ export const MainNavigation = () => {
           style={[styles.tab, activeTab === 'transactions' && styles.activeTab]}
           onPress={() => {
             setSelectedTransaction(null);
+            setPreviousTab(activeTab);
             setActiveTab('transactions');
           }}
         >
@@ -168,7 +172,10 @@ export const MainNavigation = () => {
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'subaccounts' && styles.activeTab]}
-          onPress={() => setActiveTab('subaccounts')}
+          onPress={() => {
+            setPreviousTab(activeTab);
+            setActiveTab('subaccounts');
+          }}
         >
           <Ionicons
             name={getTabIcon('subaccounts')}
@@ -186,7 +193,10 @@ export const MainNavigation = () => {
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'scan' && styles.activeTab]}
-          onPress={() => setActiveTab('scan')}
+          onPress={() => {
+            setPreviousTab(activeTab);
+            setActiveTab('scan');
+          }}
         >
           <Ionicons
             name={getTabIcon('scan')}
@@ -203,7 +213,10 @@ export const MainNavigation = () => {
 
         <TouchableOpacity
           style={[styles.tab, activeTab === 'profile' && styles.activeTab]}
-          onPress={() => setActiveTab('profile')}
+          onPress={() => {
+            setPreviousTab(activeTab);
+            setActiveTab('profile');
+          }}
         >
           <Ionicons
             name={getTabIcon('profile')}

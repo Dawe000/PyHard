@@ -18,7 +18,11 @@ import { sendPYUSD } from "@/services/sendService";
 import { getOrCreateSmartWallet } from "@/services/smartWallet";
 import { YStack, XStack, Text } from "tamagui";
 
-const SendScreen = () => {
+interface SendScreenProps {
+  onBack?: () => void;
+}
+
+const SendScreen = ({ onBack }: SendScreenProps = {}) => {
   const [recipientAddress, setRecipientAddress] = useState("");
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -286,13 +290,20 @@ const SendScreen = () => {
       >
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <YStack paddingHorizontal={16} paddingTop={30} paddingBottom={20} alignItems="center">
-            <Text fontSize={28} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={8}>
-              SEND PYUSD
-            </Text>
-            <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular" textAlign="center" lineHeight={20}>
-              &gt; Send PYUSD from your SmartWallet with sponsored gas
-            </Text>
+          <YStack paddingHorizontal={16} paddingTop={20} paddingBottom={20}>
+            {onBack && (
+              <TouchableOpacity onPress={onBack} style={{ marginBottom: 20 }}>
+                <Ionicons name="arrow-back" size={24} color="#0079c1" />
+              </TouchableOpacity>
+            )}
+            <YStack alignItems="center">
+              <Text fontSize={28} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={8}>
+                SEND PYUSD
+              </Text>
+              <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceMono_400Regular" textAlign="center" lineHeight={20}>
+                &gt; Send PYUSD from your SmartWallet with sponsored gas
+              </Text>
+            </YStack>
           </YStack>
 
           {/* Loading State */}

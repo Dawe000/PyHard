@@ -77,7 +77,7 @@ export const ReceiveScreen: React.FC<ReceiveScreenProps> = ({ onClose }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-          <Ionicons name="close" size={24} color="white" />
+          <Ionicons name="arrow-back" size={24} color="#0079c1" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Request Payment</Text>
         <View style={styles.placeholder} />
