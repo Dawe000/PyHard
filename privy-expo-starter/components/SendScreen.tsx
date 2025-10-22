@@ -8,6 +8,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  View,
+  Pressable,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -29,6 +32,8 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
   const [isLoading, setIsLoading] = useState(false);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState<{ amount: string; recipient: string; txHash: string } | null>(null);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
@@ -244,21 +249,17 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
 
         if (txResult.success) {
           console.log("✅ Send successful!");
-          Alert.alert(
-            "Success!",
-            `Sent ${amount} PYUSD to ${recipientAddress.slice(0, 10)}...\n\nTransaction: ${txResult.transactionHash?.slice(0, 10)}...`,
-            [
-              {
-                text: "OK",
-                onPress: () => {
-                  setRecipientAddress("");
-                  setAmount("");
-                  // Emit transaction completed event to refresh balances
-                  transactionEvents.emit();
-                },
-              },
-            ]
-          );
+          // Show custom success modal
+          setTransactionDetails({
+            amount,
+            recipient: recipientAddress,
+            txHash: txResult.transactionHash || ''
+          });
+          setShowSuccessModal(true);
+          setRecipientAddress("");
+          setAmount("");
+          // Emit transaction completed event to refresh balances
+          transactionEvents.emit();
         } else {
           console.log("❌ Send failed:", txResult.error);
           Alert.alert("Error", txResult.error || "Failed to send PYUSD");
@@ -489,6 +490,101 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Success Modal */}
+      <Modal visible={showSuccessModal} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <Pressable style={styles.modalBackground} onPress={() => {
+            setShowSuccessModal(false);
+            if (onBack) onBack();
+          }} />
+          <View style={styles.modalContainer}>
+            <YStack padding={24} alignItems="center">
+              {/* Success Icon */}
+              <YStack
+                width={80}
+                height={80}
+                borderRadius={40}
+                backgroundColor="rgba(52,199,89,0.2)"
+                alignItems="center"
+                justifyContent="center"
+                marginBottom={24}
+              >
+                <Ionicons name="checkmark-circle" size={60} color="#34C759" />
+              </YStack>
+
+              {/* Title */}
+              <Text fontSize={28} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={12}>
+                SUCCESS!
+              </Text>
+
+              {/* Amount */}
+              <Text fontSize={20} fontWeight="600" color="#34C759" fontFamily="SpaceMono_700Bold" marginBottom={32}>
+                {transactionDetails?.amount} PYUSD
+              </Text>
+
+              {/* Transaction Details */}
+              <LinearGradient
+                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ borderRadius: 16, padding: 1, width: '100%', marginBottom: 24 }}
+              >
+                <YStack
+                  backgroundColor="rgba(10,14,39,0.6)"
+                  borderRadius={15}
+                  padding={20}
+                  borderWidth={1}
+                  borderColor="rgba(0,121,193,0.2)"
+                  gap={16}
+                >
+                  {/* Recipient */}
+                  <YStack>
+                    <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={8}>
+                      SENT TO
+                    </Text>
+                    <Text fontSize={13} color="rgba(255,255,255,0.9)" fontFamily="SpaceMono_400Regular" numberOfLines={1}>
+                      {transactionDetails?.recipient}
+                    </Text>
+                  </YStack>
+
+                  {/* Transaction Hash */}
+                  <YStack>
+                    <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={8}>
+                      TRANSACTION HASH
+                    </Text>
+                    <Text fontSize={13} color="rgba(255,255,255,0.9)" fontFamily="SpaceMono_400Regular" numberOfLines={1}>
+                      {transactionDetails?.txHash}
+                    </Text>
+                  </YStack>
+                </YStack>
+              </LinearGradient>
+
+              {/* Close Button */}
+              <TouchableOpacity
+                onPress={() => {
+                  setShowSuccessModal(false);
+                  if (onBack) onBack();
+                }}
+                style={{ width: '100%' }}
+              >
+                <LinearGradient
+                  colors={['#0079c1', '#005a8f']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ borderRadius: 12, paddingVertical: 18 }}
+                >
+                  <XStack alignItems="center" justifyContent="center" gap={8}>
+                    <Text fontSize={16} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                      CLOSE
+                    </Text>
+                  </XStack>
+                </LinearGradient>
+              </TouchableOpacity>
+            </YStack>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -509,6 +605,21 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFFFFF",
     fontFamily: 'SpaceMono_400Regular',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+  },
+  modalBackground: {
+    flex: 1,
+  },
+  modalContainer: {
+    backgroundColor: '#0a0e27',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '75%',
+    overflow: 'hidden',
   },
 });
 
