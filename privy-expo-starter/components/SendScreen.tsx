@@ -130,79 +130,53 @@ const SendScreen = () => {
       const walletId = account.id;
       console.log("✅ Found wallet ID from account:", walletId);
 
-    // Step 2: Get EIP-7702 authorization using REST API approach
-    console.log("🔐 Getting EIP-7702 authorization using REST API...");
-    
-    const EOA_DELEGATION_ADDRESS = "0x0ef2789981b7a7a52e21320a21afcb4c31903883";
-    const CHAIN_ID = 421614;
-    
-    // Build the request payload for the Privy API
-    const input = {
-      version: 1 as const,
-      url: `https://api.privy.io/v1/wallets/${walletId}/rpc`,
-      method: 'POST' as const,
+    // Step 2: Sign EIP-7702 authorization
+    console.log("🔐 Signing EIP-7702 authorization...");
+
+    const CHAIN_ID = 421614; // Arbitrum Sepolia
+
+    // Sign EIP-7702 authorization using Privy API
+    const authorizationResponse = await fetch(`https://api.privy.io/v1/wallets/${walletId}/rpc`, {
+      method: 'POST',
       headers: {
+        'Authorization': `Basic ${btoa('cmgtb4vg702vqld0da5wktriq:cmgtb4vg702vqld0da5wktriq')}`,
         'privy-app-id': 'cmgtb4vg702vqld0da5wktriq',
+        'privy-authorization-signature': await generateAuthorizationSignature({
+          version: 1,
+          url: `https://api.privy.io/v1/wallets/${walletId}/rpc`,
+          method: 'POST',
+          headers: {
+            'privy-app-id': 'cmgtb4vg702vqld0da5wktriq',
+          },
+          body: {
+            method: 'eth_sign7702Authorization',
+            params: {
+              contract: smartWalletAddress,
+              chain_id: CHAIN_ID,
+              nonce: 0
+            }
+          }
+        }),
+        'Content-Type': 'application/json'
       },
-      body: {
+      body: JSON.stringify({
         method: 'eth_sign7702Authorization',
         params: {
-          contract: EOA_DELEGATION_ADDRESS,
+          contract: smartWalletAddress,
           chain_id: CHAIN_ID,
           nonce: 0
         }
-      }
-    };
-    
-    console.log("🔍 Authorization request payload:", JSON.stringify(input, null, 2));
-    
-    // Step 3: Generate Privy authorization signature
-    console.log("🔐 Generating Privy authorization signature...");
-    const authorizationSignatureResult = await generateAuthorizationSignature(input);
-    console.log("🔍 Authorization signature result:", authorizationSignatureResult);
-    
-    // Extract the signature string from the result object
-    let authorizationSignature: string;
-    if (typeof authorizationSignatureResult === 'string') {
-      authorizationSignature = authorizationSignatureResult;
-    } else if (typeof authorizationSignatureResult === 'object' && authorizationSignatureResult.signature) {
-      authorizationSignature = authorizationSignatureResult.signature;
-    } else {
-      throw new Error(`Unexpected authorization signature format: ${JSON.stringify(authorizationSignatureResult)}`);
-    }
-    
-    console.log("✅ Privy authorization signature extracted:", authorizationSignature);
-    
-    // Step 4: Get access token for the API call
-    const privy = createPrivyClient({
-      appId: 'cmgtb4vg702vqld0da5wktriq',
-      clientId: 'client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9'
+      })
     });
-    const accessToken = await privy.getAccessToken();
-    
-    // Step 5: Call Privy API to get EIP-7702 authorization
-    console.log("🌐 Calling Privy API to get EIP-7702 authorization...");
-    const response = await fetch(input.url, {
-      method: input.method,
-      headers: {
-        ...input.headers,
-        'Authorization': `Bearer ${accessToken}`,
-        'privy-authorization-signature': authorizationSignature,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(input.body)
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Privy API error: ${response.status} ${errorText}`);
+
+    if (!authorizationResponse.ok) {
+      throw new Error(`EIP-7702 signing failed: ${authorizationResponse.status} ${await authorizationResponse.text()}`);
     }
-    
-    const result = await response.json();
-    const eip7702Authorization = result.data.authorization;
-    console.log("✅ EIP-7702 authorization received:", JSON.stringify(eip7702Authorization, null, 2));
-      
-      // Step 3: Send the signed authorization to CF Worker for transaction submission
+
+    const authorizationData = await authorizationResponse.json();
+    console.log("✅ EIP-7702 authorization signed:", authorizationData);
+
+      // Step 3: Send the signature to CF Worker for transaction submission
       console.log("🚀 Sending transaction to CF Worker...");
       
       try {
@@ -211,7 +185,7 @@ const SendScreen = () => {
           smartWalletAddress,
           recipientAddress,
           amount,
-          eip7702Authorization
+          authorizationData // EIP-7702 authorization
         );
 
         console.log("📥 Send result received:", txResult);

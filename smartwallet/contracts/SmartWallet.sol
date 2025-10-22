@@ -69,6 +69,15 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
         _execute(target, value, data);
     }
     
+    // EIP-7702 compatible direct transfer functions
+    function transferPYUSD(address to, uint256 amount) external onlyOwner {
+        require(pyusd.transfer(to, amount), "PYUSD transfer failed");
+    }
+    
+    function transferETH(address to, uint256 amount) external onlyOwner {
+        payable(to).transfer(amount);
+    }
+    
     function executeBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata data) external onlyOwner {
         require(targets.length == values.length && targets.length == data.length, "Array length mismatch");
         

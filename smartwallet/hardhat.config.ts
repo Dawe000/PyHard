@@ -29,6 +29,13 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
+    hardhat: {
+      type: "edr-simulated",
+      chainType: "l1",
+      chainId: 31337,
+      // Enable EIP-7702 support
+      hardfork: "cancun", // Use cancun or later for EIP-7702
+    },
     hardhatMainnet: {
       type: "edr-simulated",
       chainType: "l1",

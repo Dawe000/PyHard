@@ -45,11 +45,11 @@ export async function sendPYUSD(
   smartWalletAddress: string,
   recipientAddress: string,
   amount: string,
-  eip7702Authorization: any
+  authorization: any
 ): Promise<SendPYUSDResponse> {
   try {
     console.log("📞 ===== SEND SERVICE START =====");
-    console.log("📞 Using existing sponsor endpoint for EIP-7702 transaction");
+    console.log("📞 Using existing sponsor endpoint for signature-based transaction");
     console.log("📍 EOA Address:", eoaAddress);
     console.log("🏦 SmartWallet Address:", smartWalletAddress);
     console.log("👤 Recipient Address:", recipientAddress);
@@ -86,19 +86,19 @@ export async function sendPYUSD(
 
     // Log the EIP-7702 authorization
     console.log("🔐 EIP-7702 authorization from client:");
-    console.log("🔐 Authorization:", JSON.stringify(eip7702Authorization, null, 2));
+    console.log("🔐 Authorization:", JSON.stringify(authorization, null, 2));
 
-    // Create sponsor request for transaction execution
+    // Create sponsor request for EIP-7702 transaction execution
     const sponsorRequest: SponsorRequest = {
       eoaAddress,
       smartWalletAddress,
       functionData: transferData,
       value: "0",
-      nonce: "0", // TODO: Get actual nonce
-      deadline: (Math.floor(Date.now() / 1000) + 3600).toString(), // 1 hour from now
-      signature: "0x", // Will be filled by the CF Worker
+      nonce: "0", // Not needed for EIP-7702
+      deadline: "0", // Not needed for EIP-7702
+      signature: authorization.data.authorization, // EIP-7702 authorization signature
       chainId: "421614", // Arbitrum Sepolia
-      eip7702Authorization: eip7702Authorization, // Include signed authorization from client
+      eip7702Authorization: authorization, // Include full authorization object
     };
 
     console.log("📤 Sponsor request:", JSON.stringify(sponsorRequest, null, 2));

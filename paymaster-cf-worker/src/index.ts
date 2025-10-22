@@ -14,7 +14,6 @@ interface SponsorRequest {
   deadline: string;
   signature: string;
   chainId: string;
-  eip7702Authorization: any; // The signed authorization from client
 }
 
 interface SponsorResponse {
@@ -122,20 +121,11 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       return { transactionHash: '', success: false, error: 'Missing required fields' };
     }
 
-    // 2. Authorization validation
-    if (!sponsorRequest.eip7702Authorization) {
-      return { transactionHash: '', success: false, error: 'Missing EIP-7702 authorization' };
-    }
-
-    // 3. Check deadline
+    // 2. Check deadline
     const currentTime = Math.floor(Date.now() / 1000);
     if (parseInt(sponsorRequest.deadline) < currentTime) {
       return { transactionHash: '', success: false, error: 'Request expired' };
     }
-
-    // 4. Use client-provided EIP-7702 authorization
-    const eip7702Authorization = sponsorRequest.eip7702Authorization;
-    console.log('✅ Using client-provided EIP-7702 authorization:', JSON.stringify(eip7702Authorization, null, 2));
 
     // 5. Create clients
     const publicClient = createPublicClient({
@@ -153,14 +143,11 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // 6. Check if EOA is whitelisted (simplified - skip for demo)
     console.log('🔍 Skipping whitelist check for demo');
 
-    // 7. Handle EIP-7702 transaction
-    let hash: string;
+    // 7. Handle EIP-7702 transaction - submit TO USER'S EOA with authorization
+    console.log('🚀 Using CORRECT EIP-7702 flow: submit to user EOA with authorization...');
     
-    // Use the correct EIP-7702 flow: call EOADelegation.executeOnSmartWallet
-    console.log('🚀 Using EOADelegation.executeOnSmartWallet...');
-    
-    // The data should be the encoded SmartWallet.execute() call
-    const smartWalletExecuteData = encodeFunctionData({
+    // Prepare SmartWallet.execute() call data
+    const executeData = encodeFunctionData({
       abi: [{
         type: 'function',
         name: 'execute',
@@ -177,28 +164,19 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
         sponsorRequest.functionData as `0x${string}` // PYUSD transfer data
       ]
     });
-    
-    // CF Worker as Paymaster: Sponsor gas for EIP-7702 transaction
-    console.log('📝 EIP-7702 authorization object:', JSON.stringify(eip7702Authorization, null, 2));
-    
-    // For EIP-7702, we need to use the authorization to delegate the EOA to the smart contract
-    // The EIP-7702 authorization allows the EOA to execute as the smart contract
-    
-    console.log('📝 Using EIP-7702 authorization for transaction...');
-    console.log('📝 EIP-7702 authorization details:', {
-      contract: eip7702Authorization.contract,
-      chainId: eip7702Authorization.chain_id,
-      nonce: eip7702Authorization.nonce,
-      r: eip7702Authorization.r,
-      s: eip7702Authorization.s,
-      yParity: eip7702Authorization.y_parity
+
+    // Submit transaction TO USER'S EOA (not SmartWallet!) with EIP-7702 authorization
+    console.log('🚀 Submitting transaction TO USER EOA with EIP-7702 authorization...');
+    console.log('📝 Transaction details:', {
+      to: sponsorRequest.eoaAddress, // TO USER'S EOA!
+      data: executeData, // SmartWallet.execute() call
+      authorizationList: [sponsorRequest.signature] // EIP-7702 delegation
     });
     
-    // Send transaction with EIP-7702 authorization
-    // The EIP-7702 authorization allows the EOA to execute as the smart contract
-    hash = await walletClient.sendTransaction({
-      to: sponsorRequest.smartWalletAddress as `0x${string}`,
-      data: smartWalletExecuteData,
+    const hash = await walletClient.sendTransaction({
+      to: sponsorRequest.eoaAddress as `0x${string}`, // TO USER'S EOA!
+      data: executeData, // SmartWallet.execute() call data
+      authorizationList: [sponsorRequest.signature], // EIP-7702 delegation
       value: 0n
     });
 

@@ -40,7 +40,7 @@ async function main() {
   console.log("\n💰 Funding paymaster with ETH...");
   const fundTx = await deployer.sendTransaction({
     to: paymaster.address,
-    value: parseEther("1"), // 1 ETH for gas sponsorship
+    value: parseEther("0.01"), // 0.01 ETH for gas sponsorship
   });
   console.log("✅ Paymaster funded:", fundTx);
 
