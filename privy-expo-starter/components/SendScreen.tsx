@@ -400,6 +400,39 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
                 &gt; Please enter a valid amount
               </Text>
             )}
+
+            {/* Quick Amount Buttons */}
+            <XStack gap={8} marginTop={12}>
+              {[5, 10, 50, 100].map((quickAmount) => (
+                <TouchableOpacity
+                  key={quickAmount}
+                  onPress={() => setAmount(quickAmount.toString())}
+                  style={{ flex: 1 }}
+                  disabled={isLoadingWallet}
+                >
+                  <LinearGradient
+                    colors={['rgba(0,121,193,0.2)', 'rgba(0,121,193,0.1)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ borderRadius: 8, padding: 1 }}
+                  >
+                    <YStack
+                      backgroundColor="rgba(10,14,39,0.6)"
+                      borderRadius={7}
+                      paddingVertical={10}
+                      paddingHorizontal={8}
+                      alignItems="center"
+                      borderWidth={1}
+                      borderColor="rgba(0,121,193,0.3)"
+                    >
+                      <Text fontSize={14} fontWeight="600" color="#0079c1" fontFamily="SpaceGrotesk_600SemiBold">
+                        ${quickAmount}
+                      </Text>
+                    </YStack>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </XStack>
           </YStack>
 
           {/* Transaction Summary */}
