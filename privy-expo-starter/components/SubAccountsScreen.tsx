@@ -7,7 +7,8 @@ import {
   Alert,
   TextInput,
   Modal,
-  RefreshControl
+  RefreshControl,
+  Keyboard
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
@@ -571,8 +572,8 @@ export const SubAccountsScreen = () => {
               Loading Sub-Accounts...
             </Text>
           </YStack>
-        ) : subAccounts.length > 0 ? (
-          subAccounts.map(renderSubAccount)
+        ) : subAccounts.filter(account => account.active).length > 0 ? (
+          subAccounts.filter(account => account.active).map(renderSubAccount)
         ) : (
           <YStack alignItems="center" paddingVertical={48}>
             <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.3)" />
@@ -808,11 +809,17 @@ export const SubAccountsScreen = () => {
         onRequestClose={() => setShowEditModal(false)}
       >
         <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
+          <TouchableOpacity 
+            style={{ flex: 1 }} 
+            activeOpacity={1} 
+            onPress={() => setShowEditModal(false)}
+          />
           <YStack
             backgroundColor="#0a0e27"
             borderTopLeftRadius={20}
             borderTopRightRadius={20}
             paddingTop={20}
+            maxHeight="80%"
           >
             <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
               <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
@@ -823,19 +830,30 @@ export const SubAccountsScreen = () => {
               </TouchableOpacity>
             </XStack>
 
-            <YStack paddingHorizontal={20} marginBottom={20}>
-              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
-                NEW MONTHLY LIMIT (PYUSD)
-              </Text>
-              <TextInput
-                style={styles.textInput}
-                value={newLimit}
-                onChangeText={setNewLimit}
-                placeholder="Enter new limit"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                keyboardType="numeric"
-              />
-            </YStack>
+            <ScrollView 
+              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <YStack marginBottom={20}>
+                <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
+                  NEW MONTHLY LIMIT (PYUSD)
+                </Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={newLimit}
+                  onChangeText={setNewLimit}
+                  placeholder="Enter new limit"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  keyboardType="numeric"
+                  returnKeyType="done"
+                  onSubmitEditing={() => {
+                    // Dismiss keyboard when done is pressed
+                    Keyboard.dismiss();
+                  }}
+                />
+              </YStack>
+            </ScrollView>
 
             <XStack paddingHorizontal={20} paddingBottom={20} gap={8}>
               <TouchableOpacity
@@ -882,6 +900,11 @@ export const SubAccountsScreen = () => {
         onRequestClose={() => setShowDeleteModal(false)}
       >
         <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="center" alignItems="center" paddingHorizontal={20}>
+          <TouchableOpacity 
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} 
+            activeOpacity={1} 
+            onPress={() => setShowDeleteModal(false)}
+          />
           <YStack
             backgroundColor="#0a0e27"
             borderRadius={20}

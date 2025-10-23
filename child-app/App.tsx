@@ -59,6 +59,12 @@ export default function App() {
     setCurrentScreen('home');
   };
 
+  const handleSubWalletDeactivated = () => {
+    console.log('⚠️ Sub-wallet deactivated! Logging out...');
+    setWalletInfo(null);
+    setCurrentScreen('get-started');
+  };
+
   // Start polling when QR is displayed
   useEffect(() => {
     if (currentScreen === 'qr-display' && qrData) {
@@ -66,6 +72,7 @@ export default function App() {
       const stopPolling = startSubWalletPolling(
         qrData.data.childEOA,
         handleSubWalletDetected,
+        handleSubWalletDeactivated,
         5000 // Poll every 5 seconds
       );
 
@@ -86,6 +93,7 @@ export default function App() {
           const stopPolling = startSubWalletPolling(
             wallet.address,
             handleSubWalletDetected,
+            handleSubWalletDeactivated,
             5000
           );
 

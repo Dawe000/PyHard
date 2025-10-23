@@ -176,6 +176,7 @@ export async function detectSubWalletCreation(childEOA: string): Promise<ParentW
 export function startSubWalletPolling(
   childEOA: string, 
   onDetected: (info: ParentWalletInfo) => void,
+  onDeactivated?: () => void,
   intervalMs: number = 10000 // Poll every 10 seconds (less frequent since we're checking all wallets)
 ): () => void {
   console.log(`🔄 Starting sub-wallet polling for: ${childEOA.slice(0, 6)}...${childEOA.slice(-4)}`);
@@ -184,9 +185,15 @@ export function startSubWalletPolling(
     try {
       const result = await detectSubWalletCreation(childEOA);
       if (result) {
-        console.log('🎉 Sub-wallet detected! Stopping polling.');
-        clearInterval(intervalId);
-        onDetected(result);
+        if (result.subWalletInfo.active) {
+          console.log('🎉 Sub-wallet detected! Stopping polling.');
+          clearInterval(intervalId);
+          onDetected(result);
+        } else {
+          console.log('⚠️ Sub-wallet is inactive! Logging out.');
+          clearInterval(intervalId);
+          onDeactivated?.();
+        }
       }
     } catch (error) {
       console.error('❌ Error in polling:', error);
