@@ -1,0 +1,13 @@
+name = "pyusd-contacts-api"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "pyusd-contacts"
+database_id = "1a3ff9b3-6304-4a7c-8dcf-ef8ebf467de9"
+
+# CORS headers for mobile app
+[env.production]
+vars = { ENVIRONMENT = "production" }

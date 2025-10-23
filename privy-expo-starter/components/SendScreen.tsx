@@ -21,19 +21,39 @@ import { sendPYUSD } from "@/services/sendService";
 import { getOrCreateSmartWallet } from "@/services/smartWallet";
 import { YStack, XStack, Text } from "tamagui";
 import { transactionEvents } from "@/utils/transactionEvents";
+import { useFocusEffect } from "@react-navigation/native";
+import {
+  getRecentSends,
+  searchUsers,
+  trackRecentSend,
+  UserProfile,
+  RecentSend,
+} from "@/services/profileService";
 
 interface SendScreenProps {
   onBack?: () => void;
+  initialRecipient?: string;
+  initialUsername?: string;
 }
 
-const SendScreen = ({ onBack }: SendScreenProps = {}) => {
-  const [recipientAddress, setRecipientAddress] = useState("");
+const SendScreen = ({ onBack, initialRecipient, initialUsername }: SendScreenProps = {}) => {
+  const [recipientAddress, setRecipientAddress] = useState(initialRecipient || "");
+  const [recipientUsername, setRecipientUsername] = useState(initialUsername || "");
+  const [recipientInput, setRecipientInput] = useState(initialUsername || initialRecipient || "");
   const [amount, setAmount] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isLoadingWallet, setIsLoadingWallet] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState<{ amount: string; recipient: string; txHash: string } | null>(null);
+
+  // User search state
+  const [showUserSearch, setShowUserSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
+  const [recentSends, setRecentSends] = useState<RecentSend[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   const { user } = usePrivy();
   const { wallets } = useEmbeddedEthereumWallet();
@@ -69,6 +89,57 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
 
     loadSmartWallet();
   }, [account?.address]);
+
+  // Load recent sends when component mounts
+  useEffect(() => {
+    if (account?.address) {
+      loadRecentSends();
+    }
+  }, [account?.address]);
+
+  // Update recipient address when initialRecipient prop changes
+  useEffect(() => {
+    if (initialRecipient) {
+      setRecipientAddress(initialRecipient);
+      setRecipientUsername(initialUsername || '');
+      setRecipientInput(initialUsername || initialRecipient);
+      setShowUserSearch(false);
+      setSearchQuery("");
+      setSearchResults([]);
+    }
+  }, [initialRecipient, initialUsername]);
+
+  const loadRecentSends = async () => {
+    if (!account?.address) return;
+
+    try {
+      console.log('Loading recent sends for address:', account.address);
+      const recent = await getRecentSends(account.address);
+      console.log('Recent sends loaded:', recent.length);
+      setRecentSends(recent);
+    } catch (error) {
+      console.error("Error loading recent sends:", error);
+    }
+  };
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const results = await searchUsers(query);
+      setSearchResults(results);
+    } catch (error) {
+      console.error("Error searching users:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handleSend = useCallback(async () => {
     console.log("🎯 ===== SEND BUTTON CLICKED =====");
@@ -249,6 +320,15 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
 
         if (txResult.success) {
           console.log("✅ Send successful!");
+
+          // Track recent send
+          try {
+            await trackRecentSend(account.address, recipientAddress);
+            loadRecentSends(); // Refresh recent sends
+          } catch (error) {
+            console.error("Error tracking recent send:", error);
+          }
+
           // Show custom success modal
           setTransactionDetails({
             amount,
@@ -281,6 +361,17 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
 
   const validateAddress = (address: string) => {
     return /^0x[a-fA-F0-9]{40}$/.test(address);
+  };
+
+  const handleSelectUser = (user: Partial<UserProfile & RecentSend>) => {
+    const address = user.wallet_address || user.to_wallet_address || '';
+    const username = user.display_name || user.username || '';
+    setRecipientAddress(address);
+    setRecipientUsername(username);
+    setRecipientInput(username || address);
+    setShowUserSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
   };
 
   const isValidRecipient = validateAddress(recipientAddress);
@@ -322,7 +413,7 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
           {/* Recipient Input */}
           <YStack marginHorizontal={16} marginBottom={24}>
             <Text fontSize={12} fontWeight="700" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={8}>
-              RECIPIENT ADDRESS
+              RECIPIENT (ADDRESS OR USERNAME)
             </Text>
             <LinearGradient
               colors={!isValidRecipient && recipientAddress ? ['rgba(255,59,48,0.3)', 'rgba(255,59,48,0.15)'] : ['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
@@ -339,11 +430,27 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
                 borderWidth={1}
                 borderColor={!isValidRecipient && recipientAddress ? 'rgba(255,59,48,0.5)' : 'rgba(0,121,193,0.2)'}
               >
+                <Ionicons name="search" size={18} color="rgba(255,255,255,0.5)" style={{ marginRight: 8 }} />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="0x..."
-                  value={recipientAddress}
-                  onChangeText={setRecipientAddress}
+                  placeholder="Search username or 0x..."
+                  value={recipientInput}
+                  onChangeText={(text) => {
+                    setRecipientInput(text);
+                    if (text.startsWith('0x')) {
+                      setRecipientAddress(text);
+                      setRecipientUsername('');
+                      setShowUserSearch(false);
+                    } else {
+                      setRecipientAddress('');
+                      setSearchQuery(text);
+                      handleSearch(text);
+                      setShowUserSearch(true);
+                    }
+                  }}
+                  onFocus={() => {
+                    setShowUserSearch(true);
+                  }}
                   autoCapitalize="none"
                   autoCorrect={false}
                   placeholderTextColor="rgba(255,255,255,0.3)"
@@ -358,6 +465,100 @@ const SendScreen = ({ onBack }: SendScreenProps = {}) => {
               <Text fontSize={12} color="#FF3B30" fontFamily="SpaceMono_400Regular" marginTop={6}>
                 &gt; Invalid Ethereum address
               </Text>
+            )}
+
+            {/* User Search Results */}
+            {showUserSearch && (
+              <YStack marginTop={12} backgroundColor="rgba(10,14,39,0.95)" borderRadius={12} borderWidth={1} borderColor="rgba(0,121,193,0.2)" padding={12}>
+                {/* Recent Sends */}
+                {recentSends.length > 0 && !searchQuery && (
+                  <YStack marginBottom={12}>
+                    <Text fontSize={11} fontWeight="700" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={8}>
+                      RECENT
+                    </Text>
+                    {recentSends.slice(0, 5).map((send) => (
+                      <TouchableOpacity
+                        key={send.to_wallet_address}
+                        onPress={() => handleSelectUser(send)}
+                        style={{ marginBottom: 8 }}
+                      >
+                        <XStack alignItems="center" gap={12} padding={8} backgroundColor="rgba(0,121,193,0.1)" borderRadius={8}>
+                          <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,121,193,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+                            <Text style={{ color: '#0079c1', fontWeight: '700' }}>
+                              {send.display_name?.charAt(0).toUpperCase() || send.username?.charAt(0).toUpperCase() || '?'}
+                            </Text>
+                          </View>
+                          <YStack flex={1}>
+                            <Text fontSize={14} fontWeight="600" color="#fff">
+                              {send.display_name || send.username || 'Unknown'}
+                            </Text>
+                            {send.username && (
+                              <Text fontSize={11} color="rgba(0,121,193,0.8)" fontFamily="SpaceMono_400Regular">
+                                @{send.username}
+                              </Text>
+                            )}
+                            <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="monospace">
+                              {send.to_wallet_address.slice(0, 10)}...{send.to_wallet_address.slice(-8)}
+                            </Text>
+                          </YStack>
+                          <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+                        </XStack>
+                      </TouchableOpacity>
+                    ))}
+                  </YStack>
+                )}
+
+                {/* Search Results */}
+                {searchQuery.length >= 2 && (
+                  <YStack>
+                    <Text fontSize={11} fontWeight="700" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={8}>
+                      SEARCH RESULTS
+                    </Text>
+                    {isSearching ? (
+                      <YStack alignItems="center" padding={20}>
+                        <Text fontSize={14} color="rgba(255,255,255,0.6)">Searching...</Text>
+                      </YStack>
+                    ) : searchResults.length === 0 ? (
+                      <YStack alignItems="center" padding={20}>
+                        <Ionicons name="search-outline" size={48} color="rgba(255,255,255,0.3)" />
+                        <Text fontSize={14} color="rgba(255,255,255,0.6)" marginTop={12} textAlign="center">
+                          No users found
+                        </Text>
+                      </YStack>
+                    ) : (
+                      searchResults.map((user) => (
+                        <TouchableOpacity
+                          key={user.wallet_address}
+                          onPress={() => handleSelectUser(user)}
+                          style={{ marginBottom: 8 }}
+                        >
+                          <XStack alignItems="center" gap={12} padding={8} backgroundColor="rgba(0,121,193,0.1)" borderRadius={8}>
+                            <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,121,193,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+                              <Text style={{ color: '#0079c1', fontWeight: '700' }}>
+                                {user.display_name?.charAt(0).toUpperCase() || user.username?.charAt(0).toUpperCase() || 'U'}
+                              </Text>
+                            </View>
+                            <YStack flex={1}>
+                              <Text fontSize={14} fontWeight="600" color="#fff">
+                                {user.display_name || user.username}
+                              </Text>
+                              {user.username && (
+                                <Text fontSize={11} color="rgba(0,121,193,0.8)" fontFamily="SpaceMono_400Regular">
+                                  @{user.username}
+                                </Text>
+                              )}
+                              <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="monospace">
+                                {user.wallet_address.slice(0, 10)}...{user.wallet_address.slice(-8)}
+                              </Text>
+                            </YStack>
+                            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+                          </XStack>
+                        </TouchableOpacity>
+                      ))
+                    )}
+                  </YStack>
+                )}
+              </YStack>
             )}
           </YStack>
 

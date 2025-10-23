@@ -14,14 +14,16 @@ import SendScreen from "./SendScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { QRScannerScreen } from "./QRScannerScreen";
 import { PaymentConfirmationScreen } from "./PaymentConfirmationScreen";
+import { ContactsScreen } from "./ContactsScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan' | 'contacts';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
   const [scannedQRData, setScannedQRData] = useState<any>(null);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [previousTab, setPreviousTab] = useState<TabType>('balance');
+  const [selectedRecipient, setSelectedRecipient] = useState<{ address: string; username?: string } | null>(null);
 
   const handleTabChange = (newTab: TabType) => {
     setPreviousTab(activeTab);
@@ -41,6 +43,11 @@ export const MainNavigation = () => {
   const handlePaymentCancel = () => {
     setScannedQRData(null);
     setActiveTab('scan');
+  };
+
+  const handleNavigateToSend = (walletAddress: string, username?: string) => {
+    setSelectedRecipient({ address: walletAddress, username });
+    handleTabChange('send');
   };
 
   const renderScreen = () => {
@@ -76,13 +83,23 @@ export const MainNavigation = () => {
           <ProfileScreen />
         </View>
         <View style={{ display: activeTab === 'send' ? 'flex' : 'none', flex: 1 }}>
-          <SendScreen onBack={() => handleTabChange(previousTab)} />
+          <SendScreen
+            onBack={() => {
+              setSelectedRecipient(null);
+              handleTabChange(previousTab);
+            }}
+            initialRecipient={selectedRecipient?.address}
+            initialUsername={selectedRecipient?.username}
+          />
         </View>
         <View style={{ display: activeTab === 'scan' ? 'flex' : 'none', flex: 1 }}>
           <QRScannerScreen
             onQRScanned={handleQRScanned}
             onClose={() => setActiveTab('balance')}
           />
+        </View>
+        <View style={{ display: activeTab === 'contacts' ? 'flex' : 'none', flex: 1 }}>
+          <ContactsScreen onNavigateToSend={handleNavigateToSend} />
         </View>
       </>
     );
@@ -100,6 +117,8 @@ export const MainNavigation = () => {
         return 'person-circle';
       case 'scan':
         return 'qr-code';
+      case 'contacts':
+        return 'people-circle';
       default:
         return 'wallet';
     }
@@ -117,6 +136,8 @@ export const MainNavigation = () => {
         return 'Profile';
       case 'scan':
         return 'Scan';
+      case 'contacts':
+        return 'Contacts';
       default:
         return 'Balance';
     }
@@ -174,24 +195,23 @@ export const MainNavigation = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'subaccounts' && styles.activeTab]}
+          style={[styles.tab, activeTab === 'contacts' && styles.activeTab]}
           onPress={() => {
-            if (activeTab !== 'subaccounts') {
-              handleTabChange('subaccounts');
+            if (activeTab !== 'contacts') {
+              handleTabChange('contacts');
             }
           }}
         >
           <Ionicons
-            name={getTabIcon('subaccounts')}
+            name={getTabIcon('contacts')}
             size={24}
-            color={activeTab === 'subaccounts' ? '#0070BA' : '#8E8E93'}
+            color={activeTab === 'contacts' ? '#0070BA' : '#8E8E93'}
           />
           <Text style={[
             styles.tabLabel,
-            styles.subAccountsLabel,
-            activeTab === 'subaccounts' && styles.activeTabLabel
+            activeTab === 'contacts' && styles.activeTabLabel
           ]}>
-            {getTabLabel('subaccounts')}
+            {getTabLabel('contacts')}
           </Text>
         </TouchableOpacity>
 
