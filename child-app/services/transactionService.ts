@@ -125,14 +125,14 @@ export async function sendTransaction(
       value: "0",
       nonce: "0", // Not needed for EIP-7702 (same as main app)
       deadline: Math.floor(Date.now() / 1000 + 600).toString(), // 10 minutes from now
-      signature: {
+      signature: JSON.stringify({
         chain_id: authorization.chainId.toString(),
         contract: authorization.address,
         nonce: authorization.nonce.toString(), // Use actual nonce from authorization
         r: authorization.r,
         s: authorization.s,
         y_parity: authorization.yParity
-      }, // EIP-7702 authorization signature (paymaster format)
+      }), // EIP-7702 authorization signature (paymaster format)
       chainId: "421614", // Arbitrum Sepolia
       eip7702Authorization: authorizationWrapper, // Include full authorization object (same as main app)
       subWalletId: request.subWalletId, // Add sub-wallet ID

@@ -740,7 +740,7 @@ async function handleSendChildTransaction(
       args: [
         BigInt(childTransactionRequest.subWalletId),
         childTransactionRequest.recipientAddress as `0x${string}`,
-        BigInt(childTransactionRequest.amount)
+        BigInt(Math.floor(parseFloat(childTransactionRequest.amount) * 1000000)) // Convert PYUSD to wei (6 decimals)
       ]
     });
 
@@ -761,10 +761,11 @@ async function handleSendChildTransaction(
 
   } catch (error) {
     console.error('❌ Error processing child transaction:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       transactionHash: '',
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: errorMessage
     };
   }
 }
