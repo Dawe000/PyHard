@@ -100,9 +100,11 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
 
     console.log('🔍 Blockscout: Loading transaction history for SmartWallet:', smartWalletAddress);
 
+    // Only show loading state for manual refresh, not background polling
     if (isRefresh) {
       setIsRefreshing(true);
-    } else {
+    } else if (transactions.length === 0) {
+      // Only show loading for initial load when we have no data
       setIsLoading(true);
     }
 
@@ -110,8 +112,8 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
       // Fetch PYUSD token transfers
       const pyusdTransfers = await getPYUSDTransfers(smartWalletAddress, 1, 20);
 
-      // Add minimum loading time for smooth UX
-      if (!isRefresh) {
+      // Add minimum loading time for smooth UX only on initial load
+      if (transactions.length === 0 && !isRefresh) {
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
@@ -127,7 +129,7 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [smartWalletAddress]);
+  }, [smartWalletAddress, transactions.length]);
 
   // Load transactions when SmartWallet address is available
   useEffect(() => {
@@ -180,7 +182,11 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
     }
 
     console.log('🔍 Loading subscriptions for SmartWallet:', smartWalletAddress);
-    setIsLoading(true);
+    
+    // Only show loading state for manual refresh, not background polling
+    if (isRefresh) {
+      setIsRefreshing(true);
+    }
 
     try {
       const response = await fetch(`https://paymaster-cf-worker.dawid-pisarczyk.workers.dev/subscriptions/${smartWalletAddress}`);
@@ -197,7 +203,9 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
       console.error('❌ Error loading subscriptions:', error);
       setSubscriptions([]);
     } finally {
-      setIsLoading(false);
+      if (isRefresh) {
+        setIsRefreshing(false);
+      }
     }
   };
 

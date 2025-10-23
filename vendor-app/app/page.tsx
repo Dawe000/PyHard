@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { createSubscriptionQR, formatInterval } from "@/lib/qrcode";
 import { INTERVAL_PRESETS } from "@/lib/constants";
-import { useAccount } from 'wagmi';
+import { useAccount, useWalletClient } from 'wagmi';
+import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
 
 interface Subscription {
   subscriptionId: number;
@@ -18,12 +20,14 @@ interface Subscription {
 
 export default function Home() {
   const { address, isConnected } = useAccount();
+  const { data: walletClient } = useWalletClient();
   const [amount, setAmount] = useState("");
   const [intervalType, setIntervalType] = useState<"daily" | "weekly" | "monthly" | "custom">("monthly");
   const [customInterval, setCustomInterval] = useState("");
   const [qrData, setQrData] = useState<string | null>(null);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(false);
+  const [executingPayment, setExecutingPayment] = useState<number | null>(null);
 
   // Fetch subscriptions when address changes
   useEffect(() => {
@@ -92,6 +96,85 @@ export default function Home() {
     const nextPaymentTimestamp = parseInt(lastPayment) + parseInt(interval);
     const date = new Date(nextPaymentTimestamp * 1000);
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+  }
+
+  async function executePayment(subscription: Subscription) {
+    // Only run in browser
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (!walletClient) {
+      alert('Wallet not connected');
+      return;
+    }
+
+    if (!address) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    setExecutingPayment(subscription.subscriptionId);
+    
+    try {
+      console.log(`💰 Executing payment for subscription ${subscription.subscriptionId}`);
+      console.log('📊 Subscription details:', subscription);
+      
+      // Encode the executeSubscriptionPayment function call
+      const functionData = encodeFunctionData({
+        abi: [{
+          type: 'function',
+          name: 'executeSubscriptionPayment',
+          inputs: [{ type: 'uint256', name: 'subscriptionId' }],
+          outputs: []
+        }],
+        functionName: 'executeSubscriptionPayment',
+        args: [BigInt(subscription.subscriptionId)]
+      });
+
+      console.log('📝 Function data:', functionData);
+
+      // Check if subscription is ready for payment
+      const now = Math.floor(Date.now() / 1000);
+      const lastPayment = parseInt(subscription.lastPayment);
+      const interval = parseInt(subscription.interval);
+      const nextPaymentTime = lastPayment + interval;
+      
+      console.log('⏰ Payment timing check:', {
+        now,
+        lastPayment,
+        interval,
+        nextPaymentTime,
+        isReady: now >= nextPaymentTime
+      });
+
+      if (now < nextPaymentTime) {
+        const timeUntilReady = nextPaymentTime - now;
+        const hoursUntilReady = Math.ceil(timeUntilReady / 3600);
+        alert(`Payment not ready yet. Next payment available in ${hoursUntilReady} hours.`);
+        return;
+      }
+
+      // Send transaction to smart wallet
+      const hash = await walletClient.sendTransaction({
+        to: subscription.smartWallet as `0x${string}`,
+        data: functionData,
+        value: 0n,
+        gas: 100000n // Set reasonable gas limit
+      });
+
+      console.log('✅ Payment transaction sent:', hash);
+      alert(`Payment executed successfully!\nTransaction: ${hash}`);
+      
+      // Refresh subscriptions to show updated data
+      await fetchSubscriptions();
+      
+    } catch (error) {
+      console.error('❌ Error executing payment:', error);
+      alert(`Failed to execute payment: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setExecutingPayment(null);
+    }
   }
 
   return (
@@ -242,6 +325,9 @@ export default function Home() {
                         <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">
                           Status
                         </th>
+                        <th className="text-left py-3 px-4 font-medium text-gray-700 dark:text-gray-300">
+                          Actions
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -269,6 +355,15 @@ export default function Home() {
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                               Active
                             </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => executePayment(sub)}
+                              disabled={loading || executingPayment === sub.subscriptionId}
+                              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-3 py-1 rounded text-sm font-medium transition"
+                            >
+                              {executingPayment === sub.subscriptionId ? 'Executing...' : 'Execute Payment'}
+                            </button>
                           </td>
                         </tr>
                       ))}

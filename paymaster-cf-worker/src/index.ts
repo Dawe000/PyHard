@@ -130,6 +130,19 @@ interface CancelSubscriptionResponse {
   error?: string;
 }
 
+interface ExecutePaymentRequest {
+  vendorAddress: string;
+  smartWalletAddress: string;
+  subscriptionId: number;
+}
+
+interface ExecutePaymentResponse {
+  transactionHash: string;
+  success: boolean;
+  amount?: string;
+  error?: string;
+}
+
 interface SendChildTransactionRequest {
   childEOA: string;
   smartWalletAddress: string;
@@ -215,28 +228,35 @@ export default {
         });
       }
 
-      // Subscription endpoints
-      if (url.pathname === '/create-subscription' && request.method === 'POST') {
-        const response = await handleCreateSubscription(request, env);
-        return new Response(JSON.stringify(response), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+  // Subscription endpoints
+  if (url.pathname === '/create-subscription' && request.method === 'POST') {
+    const response = await handleCreateSubscription(request, env);
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
-      if (url.pathname === '/cancel-subscription' && request.method === 'POST') {
-        const response = await handleCancelSubscription(request, env);
-        return new Response(JSON.stringify(response), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+  if (url.pathname === '/cancel-subscription' && request.method === 'POST') {
+    const response = await handleCancelSubscription(request, env);
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
-      if (url.pathname.startsWith('/subscriptions/') && request.method === 'GET') {
-        const smartWalletAddress = url.pathname.split('/')[2];
-        const response = await handleGetSubscriptions(smartWalletAddress, env);
-        return new Response(JSON.stringify(response), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      }
+  if (url.pathname === '/execute-payment' && request.method === 'POST') {
+    const response = await handleExecutePayment(request, env);
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (url.pathname.startsWith('/subscriptions/') && request.method === 'GET') {
+    const smartWalletAddress = url.pathname.split('/')[2];
+    const response = await handleGetSubscriptions(smartWalletAddress, env);
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
 
       // Health check
       if (url.pathname === '/health' && request.method === 'GET') {
