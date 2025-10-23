@@ -3,11 +3,11 @@
 // Arbitrum Sepolia testnet chain ID
 export const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
 
-// EOA Delegation contract address (from CF Worker deployment)
-export const EOA_DELEGATION_ADDRESS = "0x58b15c7291c316e0b3c8af875de54f07e0e4b05d";
+// EOA Delegation contract address (updated deployment)
+export const EOA_DELEGATION_ADDRESS = "0x0977081db8717cb860716edcd117ef1fbf108857";
 
-// SmartWallet Factory contract address
-export const SMART_WALLET_FACTORY_ADDRESS = "0x1f33b3edae1a462a2eafad8531ddbe6ab72f2bef";
+// SmartWallet Factory contract address (updated deployment)
+export const SMART_WALLET_FACTORY_ADDRESS = "0x454ea2f4a72351f6d26edf36b9d99b156691a922";
 
 // PYUSD contract address on Arbitrum Sepolia
 export const PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1";

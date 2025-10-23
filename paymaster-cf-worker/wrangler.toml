@@ -6,9 +6,9 @@ account_id = "2ff7a66618cc5f0d9a5ab90044188748"
 
 [vars]
 # PAYMASTER_PRIVATE_KEY is now in .dev.vars for security
-EOA_DELEGATION_ADDRESS = "0x58b15c7291c316e0b3c8af875de54f07e0e4b05d" # EOADelegation V4 contract address (Arbitrum Sepolia) with EIP-7702 hardcoded paymaster and nonce support
-EIP7702_PAYMASTER_ADDRESS = "0x937884bf26c66d53aeb6a1a3bf02cdbb4bc0d8ee" # EIP7702Paymaster contract address (Arbitrum Sepolia)
-SMART_WALLET_FACTORY_ADDRESS = "0xe16ae63bf10ad8e0522f7b79dc21fdc72f9e86d9" # SmartWalletFactory contract address (Arbitrum Sepolia)
+EOA_DELEGATION_ADDRESS = "0x0977081db8717cb860716edcd117ef1fbf108857" # Updated EOADelegation contract address (Arbitrum Sepolia)
+EIP7702_PAYMASTER_ADDRESS = "0x53cd866553b78a32060b70e764d31b0fe3afe52c" # Paymaster address (Arbitrum Sepolia)
+SMART_WALLET_FACTORY_ADDRESS = "0x454ea2f4a72351f6d26edf36b9d99b156691a922" # Updated SmartWalletFactory contract address (Arbitrum Sepolia)
 PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1" # Real PYUSD token address (Arbitrum Sepolia)
 RPC_URL = "https://sepolia-rollup.arbitrum.io/rpc" # Arbitrum Sepolia RPC
 

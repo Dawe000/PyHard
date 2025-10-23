@@ -112,8 +112,7 @@ export default {
 async function handleSponsorTransaction(request: Request, env: Env): Promise<SponsorResponse> {
   const sponsorRequest: SponsorRequest = await request.json();
   
-  console.log('📥 Processing sponsor request for:', sponsorRequest.eoaAddress);
-  console.log('📥 Full sponsor request:', JSON.stringify(sponsorRequest, null, 2));
+  console.log(`💸 Sponsoring transaction for: ${sponsorRequest.eoaAddress.slice(0, 6)}...${sponsorRequest.eoaAddress.slice(-4)}`);
 
   try {
     // 1. Basic validation
@@ -294,10 +293,18 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       ]
     });
     
+    // Get current nonce to avoid nonce conflicts
+    const currentNonce = await publicClient.getTransactionCount({
+      address: relayerAccount.address,
+      blockTag: 'pending'
+    });
+    console.log('🔍 Current paymaster nonce for sponsor transaction:', currentNonce);
+
     const hash = await walletClient.sendTransaction({
       to: sponsorRequest.eoaAddress as `0x${string}`, // TO EOA (now delegated to EOADelegation)!
       data: delegationData, // EOADelegation.executeOnSmartWallet() call data
-      value: 0n
+      value: 0n,
+      nonce: currentNonce
     });
 
     console.log('✅ Transaction submitted:', hash);
@@ -322,7 +329,7 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
   try {
     const { eoaAddress, privyToken }: CreateSmartWalletRequest = await request.json();
     
-    console.log('📥 Processing SmartWallet creation request:', { eoaAddress });
+    console.log(`🏗️ Creating SmartWallet for: ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`);
 
     // 1. Validate input
     if (!eoaAddress || !privyToken) {
@@ -333,19 +340,11 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
       };
     }
 
-    // 2. Verify Privy token (simplified for now - will add full verification)
-    // TODO: Add proper Privy JWT verification using @privy-io/server-auth
-    console.log('🔐 PrivyAvailable token verification (simplified)');
-
-    // 3. Create clients
+    // 2. Create clients
     const publicClient = createPublicClient({
       chain: arbitrumSepolia,
       transport: http(env.RPC_URL)
     });
-
-    console.log('🔍 Private key from env:', env.PAYMASTER_PRIVATE_KEY);
-    console.log('🔍 Private key type:', typeof env.PAYMASTER_PRIVATE_KEY);
-    console.log('🔍 Private key length:', env.PAYMASTER_PRIVATE_KEY?.length);
 
     const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
     const walletClient = createWalletClient({
@@ -354,7 +353,7 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
       transport: http(env.RPC_URL)
     });
 
-    // 4. Check if SmartWallet already exists
+    // 3. Check if SmartWallet already exists
     const getWalletData = encodeFunctionData({
       abi: [{
         type: 'function',
@@ -372,24 +371,20 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
       data: getWalletData
     });
 
-    console.log('🔍 Existing wallet check result:', existingWallet);
-    console.log('🔍 existingWallet.data type:', typeof existingWallet.data);
-    console.log('🔍 existingWallet.data value:', existingWallet.data);
-
     // If wallet exists (not zero address), return it
     if (existingWallet.data && 
         typeof existingWallet.data === 'string' && 
         existingWallet.data !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
       const walletAddress = `0x${existingWallet.data.slice(-40)}`;
-      console.log('✅ SmartWallet already exists:', walletAddress);
+      console.log(`✅ Existing SmartWallet: ${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`);
       return {
         smartWalletAddress: walletAddress,
         isNew: false
       };
     }
 
-    // 5. Create new SmartWallet
-    console.log('🏗️ Creating new SmartWallet for:', eoaAddress);
+    // 4. Create new SmartWallet
+    console.log('🏗️ Creating new SmartWallet...');
     
     const createWalletData = encodeFunctionData({
       abi: [{
@@ -402,43 +397,37 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
       args: [eoaAddress as `0x${string}`]
     });
 
+    // Get current nonce to avoid nonce conflicts
+    const currentNonce = await publicClient.getTransactionCount({
+      address: relayerAccount.address,
+      blockTag: 'pending'
+    });
+
     const hash = await walletClient.sendTransaction({
       to: env.SMART_WALLET_FACTORY_ADDRESS as `0x${string}`,
       data: createWalletData,
-      value: 0n
+      value: 0n,
+      nonce: currentNonce
     });
 
-    console.log('✅ SmartWallet creation transaction submitted:', hash);
+    console.log(`📤 Transaction: ${hash.slice(0, 10)}...`);
 
     // Wait for transaction and get the wallet address from logs
     const receipt = await publicClient.waitForTransactionReceipt({ hash });
     
-    console.log('🔍 Transaction receipt:', receipt);
-    
     // Parse the WalletCreated event to get the new wallet address
-    // Event: WalletCreated(address indexed owner, address indexed wallet)
     let newWalletAddress = '';
     if (receipt.logs && receipt.logs.length > 0) {
-      console.log('🔍 Parsing logs for WalletCreated event...');
-      // The wallet address is the second indexed parameter (topic[2])
       const walletCreatedLog = receipt.logs.find(log => 
         log.topics.length >= 3 && 
         log.address.toLowerCase() === env.SMART_WALLET_FACTORY_ADDRESS.toLowerCase()
       );
       
-      console.log('🔍 Found wallet created log:', walletCreatedLog);
-      
       if (walletCreatedLog && walletCreatedLog.topics && walletCreatedLog.topics[2]) {
         newWalletAddress = `0x${walletCreatedLog.topics[2].slice(-40)}`;
-        console.log('✅ Extracted wallet address from log:', newWalletAddress);
-      } else {
-        console.log('⚠️ Could not extract wallet address from logs');
+        console.log(`✅ New SmartWallet: ${newWalletAddress.slice(0, 6)}...${newWalletAddress.slice(-4)}`);
       }
-    } else {
-      console.log('⚠️ No logs found in transaction receipt');
     }
-
-    console.log('✅ SmartWallet created:', newWalletAddress);
 
     return {
       smartWalletAddress: newWalletAddress,

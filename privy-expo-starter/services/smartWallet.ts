@@ -11,6 +11,7 @@ export interface SmartWalletInfo {
 
 /**
  * Get or create a SmartWallet for the given EOA address
+ * Handles migration from old factory to new factory for existing users
  * @param eoaAddress - The EOA address
  * @param privyAccessToken - The Privy access token for authentication
  * @returns SmartWallet information
@@ -20,47 +21,33 @@ export async function getOrCreateSmartWallet(
   privyAccessToken: string
 ): Promise<SmartWalletInfo> {
   try {
-    console.log("📞 Calling CF Worker to get/create SmartWallet");
-    console.log("📍 EOA Address:", eoaAddress);
-    console.log("🔗 CF Worker URL:", `${CF_WORKER_URL}/create-smart-wallet`);
-    console.log("🔐 Using token:", privyAccessToken.substring(0, 20) + "...");
-
-    const requestBody = {
-      eoaAddress,
-      privyToken: privyAccessToken,
-    };
-    console.log("📤 Request body:", requestBody);
+    console.log(`🏗️ SmartWallet: ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`);
 
     const response = await fetch(`${CF_WORKER_URL}/create-smart-wallet`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        eoaAddress,
+        privyToken: privyAccessToken,
+      }),
     });
-
-    console.log("📥 Response status:", response.status);
-    console.log("📥 Response headers:", Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("❌ CF Worker error response:", errorText);
-      throw new Error(`CF Worker returned ${response.status}: ${response.statusText}\nResponse: ${errorText}`);
+      console.error("❌ SmartWallet creation failed:", errorText);
+      throw new Error(`CF Worker returned ${response.status}: ${response.statusText}`);
     }
 
     const data = await response.json();
-    console.log("📥 Response data:", data);
 
     if (data.error) {
-      console.error("❌ Error in response:", data.error);
+      console.error("❌ SmartWallet error:", data.error);
       throw new Error(data.error);
     }
 
-    console.log("✅ SmartWallet info received:", {
-      address: data.smartWalletAddress,
-      isNew: data.isNew,
-      transactionHash: data.transactionHash,
-    });
+    console.log(`✅ SmartWallet: ${data.smartWalletAddress.slice(0, 6)}...${data.smartWalletAddress.slice(-4)} ${data.isNew ? '(NEW)' : '(EXISTING)'}`);
 
     return {
       address: data.smartWalletAddress,
@@ -68,7 +55,7 @@ export async function getOrCreateSmartWallet(
       transactionHash: data.transactionHash,
     };
   } catch (error) {
-    console.error("❌ Error getting/creating SmartWallet:", error);
+    console.error("❌ SmartWallet error:", error);
     throw error;
   }
 }
@@ -87,8 +74,6 @@ export async function getSmartWalletPYUSDBalance(
   decimals: number = 6
 ): Promise<string> {
   try {
-    console.log("📊 Fetching PYUSD balance for SmartWallet:", smartWalletAddress);
-
     // Encode balanceOf(address) call
     const balanceOfCallData = `0x70a08231000000000000000000000000${smartWalletAddress.slice(2)}`;
 
@@ -105,13 +90,13 @@ export async function getSmartWalletPYUSDBalance(
 
     if (balanceHex && balanceHex !== "0x") {
       const balance = (parseInt(balanceHex, 16) / Math.pow(10, decimals)).toFixed(2);
-      console.log("✅ SmartWallet PYUSD balance:", balance);
+      console.log(`💰 Balance: ${balance} PYUSD`);
       return balance;
     }
 
     return "0.00";
   } catch (error) {
-    console.error("❌ Error fetching SmartWallet balance:", error);
+    console.error("❌ Balance fetch error:", error);
     throw error;
   }
 }
