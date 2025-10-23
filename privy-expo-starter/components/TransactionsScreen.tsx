@@ -27,9 +27,12 @@ import { transactionEvents } from "@/utils/transactionEvents";
 
 interface TransactionsScreenProps {
   initialTransaction?: BlockscoutTokenTransfer | null;
+  navigation?: {
+    navigate: (screen: string, params?: any) => void;
+  };
 }
 
-export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenProps = {}) => {
+export const TransactionsScreen = ({ initialTransaction, navigation }: TransactionsScreenProps = {}) => {
   const [activeTab, setActiveTab] = useState<'transactions' | 'subscriptions'>('transactions');
   const [transactions, setTransactions] = useState<BlockscoutTokenTransfer[]>([]);
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
@@ -326,52 +329,63 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
     };
 
     return (
-      <LinearGradient
+      <TouchableOpacity
         key={`${subscription.smartWallet}-${subscription.subscriptionId}`}
-        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ borderRadius: 12, padding: 1, marginBottom: 12 }}
+        onPress={() => navigation?.navigate('SubscriptionDetails', { 
+          subscription,
+          smartWalletAddress 
+        })}
+        activeOpacity={0.7}
       >
-        <YStack
-          backgroundColor="rgba(10,14,39,0.6)"
-          borderRadius={11}
-          padding={16}
-          borderWidth={1}
-          borderColor="rgba(0,121,193,0.2)"
+        <LinearGradient
+          colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ borderRadius: 12, padding: 1, marginBottom: 12 }}
         >
-          <XStack justifyContent="space-between" alignItems="center">
-            <XStack alignItems="center" gap={12} flex={1}>
-              <YStack
-                width={40}
-                height={40}
-                borderRadius={20}
-                backgroundColor="#0079c120"
-                alignItems="center"
-                justifyContent="center"
-              >
-                <Ionicons name="repeat" size={20} color="#0079c1" />
-              </YStack>
-              <YStack flex={1}>
-                <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                  Subscription #{subscription.subscriptionId}
-                </Text>
-                <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
-                  {formatInterval(parseInt(subscription.interval))} • {subscription.vendor.slice(0, 6)}...{subscription.vendor.slice(-4)}
-                </Text>
-              </YStack>
+          <YStack
+            backgroundColor="rgba(10,14,39,0.6)"
+            borderRadius={11}
+            padding={16}
+            borderWidth={1}
+            borderColor="rgba(0,121,193,0.2)"
+          >
+            <XStack justifyContent="space-between" alignItems="center">
+              <XStack alignItems="center" gap={12} flex={1}>
+                <YStack
+                  width={40}
+                  height={40}
+                  borderRadius={20}
+                  backgroundColor="#0079c120"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Ionicons name="repeat" size={20} color="#0079c1" />
+                </YStack>
+                <YStack flex={1}>
+                  <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                    Subscription #{subscription.subscriptionId}
+                  </Text>
+                  <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
+                    {formatInterval(parseInt(subscription.interval))} • {subscription.vendor.slice(0, 6)}...{subscription.vendor.slice(-4)}
+                  </Text>
+                </YStack>
+              </XStack>
+              <XStack alignItems="flex-end" gap={8}>
+                <YStack alignItems="flex-end">
+                  <Text fontSize={16} fontWeight="700" color="#0079c1" fontFamily="SpaceGrotesk_700Bold">
+                    ${amount.toFixed(2)}
+                  </Text>
+                  <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
+                    Next: {nextPayment.toLocaleDateString()}
+                  </Text>
+                </YStack>
+                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.4)" />
+              </XStack>
             </XStack>
-            <YStack alignItems="flex-end">
-              <Text fontSize={16} fontWeight="700" color="#0079c1" fontFamily="SpaceGrotesk_700Bold">
-                ${amount.toFixed(2)}
-              </Text>
-              <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
-                Next: {nextPayment.toLocaleDateString()}
-              </Text>
-            </YStack>
-          </XStack>
-        </YStack>
-      </LinearGradient>
+          </YStack>
+        </LinearGradient>
+      </TouchableOpacity>
     );
   };
 

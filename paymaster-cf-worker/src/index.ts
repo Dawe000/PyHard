@@ -143,6 +143,15 @@ interface ExecutePaymentResponse {
   error?: string;
 }
 
+interface PaymentHistoryResponse {
+  payments: Array<{
+    transactionHash: string;
+    amount: string;
+    timestamp: string;
+    blockNumber: string;
+  }>;
+}
+
 interface SendChildTransactionRequest {
   childEOA: string;
   smartWalletAddress: string;
@@ -253,6 +262,16 @@ export default {
   if (url.pathname.startsWith('/subscriptions/') && request.method === 'GET') {
     const smartWalletAddress = url.pathname.split('/')[2];
     const response = await handleGetSubscriptions(smartWalletAddress, env);
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
+  }
+
+  if (url.pathname.startsWith('/payment-history/') && request.method === 'GET') {
+    const pathParts = url.pathname.split('/');
+    const smartWalletAddress = pathParts[2];
+    const subscriptionId = pathParts[3];
+    const response = await handleGetPaymentHistory(smartWalletAddress, subscriptionId, env);
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
@@ -1262,5 +1281,60 @@ async function handleGetSubscriptions(smartWalletAddress: string, env: Env): Pro
   } catch (error) {
     console.error('❌ Error fetching subscriptions:', error);
     return { subscriptions: [] };
+  }
+}
+
+async function handleGetPaymentHistory(smartWalletAddress: string, subscriptionId: string, env: Env): Promise<PaymentHistoryResponse> {
+  try {
+    console.log(`📝 Fetching payment history for subscription ${subscriptionId} in smart wallet: ${smartWalletAddress}`);
+
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // Query Blockscout for SubscriptionPaymentExecuted events
+    const BLOCKSCOUT_API = "https://arbitrum-sepolia.blockscout.com/api";
+    const SUBSCRIPTION_PAYMENT_EVENT = keccak256(toHex('SubscriptionPaymentExecuted(uint256,uint256)'));
+    
+    // First try without topic1 filter to see all payment events
+    const eventUrl = `${BLOCKSCOUT_API}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${smartWalletAddress}&topic0=${SUBSCRIPTION_PAYMENT_EVENT}`;
+    
+    console.log('📡 Fetching payment history events:', eventUrl);
+    
+    const response = await fetch(eventUrl);
+    const data = await response.json();
+
+    if (data.status !== '1' || !data.result) {
+      return { payments: [] };
+    }
+
+    const payments = data.result
+      .filter((log: any) => {
+        // Filter by subscription ID in topic1
+        const topic1 = log.topics[1];
+        const logSubscriptionId = parseInt(topic1, 16);
+        return logSubscriptionId === parseInt(subscriptionId);
+      })
+      .map((log: any) => {
+        // Parse amount from data field (second uint256)
+        const amountHex = '0x' + log.data.slice(66, 130); // Extract second 32 bytes
+        const amount = BigInt(amountHex).toString();
+        
+        return {
+          transactionHash: log.transactionHash,
+          amount: amount,
+          timestamp: log.timeStamp,
+          blockNumber: log.blockNumber
+        };
+      });
+
+    console.log(`📊 Found ${payments.length} payment history entries`);
+
+    return { payments };
+
+  } catch (error) {
+    console.error('❌ Error fetching payment history:', error);
+    return { payments: [] };
   }
 }

@@ -16,8 +16,9 @@ import { QRScannerScreen } from "./QRScannerScreen";
 import { PaymentConfirmationScreen } from "./PaymentConfirmationScreen";
 import { SubAccountCreationScreen } from "./SubAccountCreationScreen";
 import { ContactsScreen } from "./ContactsScreen";
+import { SubscriptionDetailsScreen } from "./SubscriptionDetailsScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan' | 'contacts' | 'subaccount-creation';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan' | 'contacts' | 'subaccount-creation' | 'subscription-details';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -25,6 +26,7 @@ export const MainNavigation = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [previousTab, setPreviousTab] = useState<TabType>('balance');
   const [selectedRecipient, setSelectedRecipient] = useState<{ address: string; username?: string } | null>(null);
+  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
 
   const handleTabChange = (newTab: TabType) => {
     setPreviousTab(activeTab);
@@ -66,6 +68,21 @@ export const MainNavigation = () => {
   const handleNavigateToSend = (walletAddress: string, username?: string) => {
     setSelectedRecipient({ address: walletAddress, username });
     handleTabChange('send');
+  };
+
+  const handleNavigateToSubscriptionDetails = (subscription: any, smartWalletAddress: string) => {
+    setSelectedSubscription({ subscription, smartWalletAddress });
+    setActiveTab('subscription-details');
+  };
+
+  const handleSubscriptionDetailsClose = () => {
+    setSelectedSubscription(null);
+    setActiveTab('transactions');
+  };
+
+  const handleSubscriptionCancelled = () => {
+    setSelectedSubscription(null);
+    setActiveTab('transactions');
   };
 
   const renderScreen = () => {
@@ -114,7 +131,16 @@ export const MainNavigation = () => {
           }} />
         </View>
         <View style={{ display: activeTab === 'transactions' ? 'flex' : 'none', flex: 1 }}>
-          <TransactionsScreen initialTransaction={selectedTransaction} />
+          <TransactionsScreen 
+            initialTransaction={selectedTransaction}
+            navigation={{
+              navigate: (screen: string, params?: any) => {
+                if (screen === 'SubscriptionDetails') {
+                  handleNavigateToSubscriptionDetails(params.subscription, params.smartWalletAddress);
+                }
+              }
+            }}
+          />
         </View>
         <View style={{ display: activeTab === 'subaccounts' ? 'flex' : 'none', flex: 1 }}>
           <SubAccountsScreen />
@@ -146,6 +172,14 @@ export const MainNavigation = () => {
             qrData={scannedQRData}
             onClose={handleSubAccountCancel}
             onSuccess={handleSubAccountComplete}
+          />
+        )}
+        {activeTab === 'subscription-details' && selectedSubscription && (
+          <SubscriptionDetailsScreen
+            subscription={selectedSubscription.subscription}
+            smartWalletAddress={selectedSubscription.smartWalletAddress}
+            onClose={handleSubscriptionDetailsClose}
+            onSubscriptionCancelled={handleSubscriptionCancelled}
           />
         )}
         {activeTab === 'payment-confirmation' && scannedQRData && (
