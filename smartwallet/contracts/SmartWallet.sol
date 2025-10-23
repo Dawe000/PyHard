@@ -81,7 +81,7 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
         
         // Check if the call is coming from a known delegation contract
         // and the transaction is being sent to the owner's EOA
-        address eoaDelegation = 0x58b15c7291c316E0B3C8af875de54F07e0E4b05d;
+        address eoaDelegation = 0x0977081db8717cB860716EDCD117eF1FBf108857;
         if (msg.sender == eoaDelegation) {
             // Additional check: verify this is a delegated call
             // by checking if the caller is authorized

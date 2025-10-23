@@ -35,6 +35,31 @@ interface CreateSmartWalletResponse {
   error?: string;
 }
 
+interface CreateSubAccountRequest {
+  parentEOA: string;
+  smartWalletAddress: string;
+  childEOA: string;
+  monthlyLimit: string;
+  authorizationSignature: {
+    chainId: string;
+    address: string;
+    nonce: string;
+    r: string;
+    s: string;
+    yParity: number;
+  };
+  eoaNonce: number;
+  createSubWalletData: string;
+  executeOnSmartWalletData: string;
+}
+
+interface CreateSubAccountResponse {
+  success: boolean;
+  transactionHash?: string;
+  subWalletId?: number;
+  error?: string;
+}
+
 
 interface Env {
   PAYMASTER_KV: KVNamespace;
@@ -76,6 +101,14 @@ export default {
       // SmartWallet creation endpoint
       if (url.pathname === '/create-smart-wallet' && request.method === 'POST') {
         const response = await handleCreateSmartWallet(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Sub-account creation endpoint
+      if (url.pathname === '/create-subaccount' && request.method === 'POST') {
+        const response = await handleCreateSubAccount(request, env);
         return new Response(JSON.stringify(response), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -440,6 +473,94 @@ async function handleCreateSmartWallet(request: Request, env: Env): Promise<Crea
     return {
       smartWalletAddress: '',
       isNew: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function handleCreateSubAccount(request: Request, env: Env): Promise<CreateSubAccountResponse> {
+  try {
+    const subAccountRequest: CreateSubAccountRequest = await request.json();
+    
+    console.log(`🏗️ Creating sub-account for: ${subAccountRequest.childEOA.slice(0, 6)}...${subAccountRequest.childEOA.slice(-4)}`);
+
+    // 1. Create clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // 2. Step 1: EIP-7702 Authorization (lines 73-84 from test)
+    console.log('🚀 Step 1: Submitting EIP-7702 authorization...');
+    
+    const authorizationList = [{
+      chainId: BigInt(subAccountRequest.authorizationSignature.chainId),
+      address: subAccountRequest.authorizationSignature.address as `0x${string}`,
+      nonce: BigInt(subAccountRequest.authorizationSignature.nonce),
+      r: subAccountRequest.authorizationSignature.r as `0x${string}`,
+      s: subAccountRequest.authorizationSignature.s as `0x${string}`,
+      yParity: subAccountRequest.authorizationSignature.yParity
+    }];
+
+    const authHash = await walletClient.sendTransaction({
+      to: subAccountRequest.parentEOA as `0x${string}`,
+      data: '0x',
+      authorizationList: authorizationList,
+      value: 0n
+    });
+
+    console.log('✅ EIP-7702 authorization submitted:', authHash);
+    
+    // Wait for authorization
+    await publicClient.waitForTransactionReceipt({ hash: authHash });
+    console.log('✅ EIP-7702 authorization confirmed');
+
+    // 3. Step 2: Execute sub-wallet creation (lines 145-149 from test)
+    console.log('🚀 Step 2: Creating sub-wallet...');
+    
+    const hash = await walletClient.sendTransaction({
+      to: subAccountRequest.parentEOA as `0x${string}`, // TO PARENT'S EOA (now delegated)
+      data: subAccountRequest.executeOnSmartWalletData as `0x${string}`,
+      value: 0n
+    });
+
+    console.log('✅ Sub-wallet creation submitted:', hash);
+
+    // Wait for transaction and parse subWalletId from logs
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    
+    let subWalletId = 0;
+    if (receipt.logs && receipt.logs.length > 0) {
+      // Look for SubWalletCreated event
+      const subWalletCreatedLog = receipt.logs.find(log => 
+        log.topics.length >= 3 && 
+        log.address.toLowerCase() === subAccountRequest.smartWalletAddress.toLowerCase()
+      );
+      
+      if (subWalletCreatedLog && subWalletCreatedLog.topics && subWalletCreatedLog.topics[1]) {
+        // subWalletId is the first indexed parameter (topic[1])
+        subWalletId = parseInt(subWalletCreatedLog.topics[1], 16);
+        console.log(`✅ Sub-wallet created with ID: ${subWalletId}`);
+      }
+    }
+
+    return {
+      success: true,
+      transactionHash: hash,
+      subWalletId: subWalletId
+    };
+
+  } catch (error) {
+    console.error('❌ Error creating sub-account:', error);
+    return {
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     };
   }

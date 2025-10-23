@@ -7,10 +7,17 @@ export interface PaymentRequestData {
   requestId: string;
 }
 
+export interface SubAccountRequestData {
+  childEOA: string;
+  childName: string;
+  timestamp: number;
+  requestId: string;
+}
+
 export interface QRCodeData {
   version: string;
   type: string;
-  data: PaymentRequestData;
+  data: PaymentRequestData | SubAccountRequestData;
 }
 
 /**
@@ -26,6 +33,25 @@ export function createPaymentRequestQR(
     data: {
       smartWalletAddress,
       amount,
+      timestamp: Date.now(),
+      requestId: uuidv4()
+    }
+  };
+}
+
+/**
+ * Create a sub-account request QR code data structure
+ */
+export function createSubAccountRequestQR(
+  childEOA: string,
+  childName: string
+): QRCodeData {
+  return {
+    version: "1.0",
+    type: "subaccount_request",
+    data: {
+      childEOA,
+      childName,
       timestamp: Date.now(),
       requestId: uuidv4()
     }
@@ -51,12 +77,22 @@ export function decodeQRData(qrString: string): QRCodeData | null {
       parsed.version &&
       parsed.type &&
       parsed.data &&
-      parsed.data.smartWalletAddress &&
-      parsed.data.amount &&
       parsed.data.timestamp &&
       parsed.data.requestId
     ) {
-      return parsed as QRCodeData;
+      // Check if it's a payment request
+      if (parsed.type === "payment_request" && 
+          parsed.data.smartWalletAddress && 
+          parsed.data.amount) {
+        return parsed as QRCodeData;
+      }
+      
+      // Check if it's a sub-account request
+      if (parsed.type === "subaccount_request" && 
+          parsed.data.childEOA && 
+          parsed.data.childName) {
+        return parsed as QRCodeData;
+      }
     }
     
     return null;
@@ -71,6 +107,13 @@ export function decodeQRData(qrString: string): QRCodeData | null {
  */
 export function isPaymentRequest(qrData: QRCodeData): boolean {
   return qrData.type === "payment_request" && qrData.version === "1.0";
+}
+
+/**
+ * Validate if QR code is a sub-account request
+ */
+export function isSubAccountRequest(qrData: QRCodeData): boolean {
+  return qrData.type === "subaccount_request" && qrData.version === "1.0";
 }
 
 /**

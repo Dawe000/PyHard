@@ -19,6 +19,14 @@ interface RecentSend {
   last_sent_at?: number;
 }
 
+interface ChildAccount {
+  parent_wallet: string;
+  child_eoa: string;
+  child_name: string;
+  sub_wallet_id: number;
+  created_at: number;
+}
+
 // CORS headers for mobile app
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -249,6 +257,88 @@ export default {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
+      }
+
+      // POST /child-account - Store child account information
+      if (request.method === 'POST' && path === '/child-account') {
+        const childAccount: ChildAccount = await request.json();
+
+        console.log('Received child account:', childAccount);
+
+        if (!childAccount.parent_wallet || !childAccount.child_eoa || !childAccount.child_name || !childAccount.sub_wallet_id) {
+          return new Response(JSON.stringify({ error: 'Missing required fields' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        try {
+          // Insert child account
+          await env.DB.prepare(`
+            INSERT INTO child_accounts (parent_wallet, child_eoa, child_name, sub_wallet_id, created_at)
+            VALUES (?, ?, ?, ?, ?)
+          `).bind(
+            childAccount.parent_wallet.toLowerCase(),
+            childAccount.child_eoa.toLowerCase(),
+            childAccount.child_name,
+            childAccount.sub_wallet_id,
+            Math.floor(Date.now() / 1000)
+          ).run();
+
+          return new Response(JSON.stringify({ success: true }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (dbError: any) {
+          console.error('Database error:', dbError);
+          return new Response(JSON.stringify({
+            error: 'Database error: ' + dbError.message,
+            details: dbError.toString()
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+
+      // GET /child-accounts - Fetch child accounts for a parent wallet
+      if (request.method === 'POST' && path === '/child-accounts') {
+        const { parent_wallet } = await request.json();
+
+        console.log('Fetching child accounts for parent:', parent_wallet);
+
+        if (!parent_wallet) {
+          return new Response(JSON.stringify({ error: 'Missing parent_wallet' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        try {
+          // Query child accounts for this parent wallet
+          const result = await env.DB.prepare(`
+            SELECT * FROM child_accounts 
+            WHERE parent_wallet = ? 
+            ORDER BY created_at DESC
+          `).bind(parent_wallet.toLowerCase()).all();
+
+          console.log('Found child accounts:', result.results);
+
+          return new Response(JSON.stringify({ 
+            success: true, 
+            accounts: result.results || []
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        } catch (dbError: any) {
+          console.error('Database error:', dbError);
+          return new Response(JSON.stringify({
+            error: 'Database error: ' + dbError.message,
+            details: dbError.toString()
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       return new Response('Not found', {

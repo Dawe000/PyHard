@@ -7,7 +7,7 @@ export const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
 export const EOA_DELEGATION_ADDRESS = "0x0977081db8717cb860716edcd117ef1fbf108857";
 
 // SmartWallet Factory contract address (updated deployment)
-export const SMART_WALLET_FACTORY_ADDRESS = "0x454ea2f4a72351f6d26edf36b9d99b156691a922";
+export const SMART_WALLET_FACTORY_ADDRESS = "0xb8e6187beaa5e11aec0e777b95d031b0f6742462";
 
 // PYUSD contract address on Arbitrum Sepolia
 export const PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1";

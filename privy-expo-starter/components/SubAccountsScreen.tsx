@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   StyleSheet,
   SafeAreaView,
@@ -6,44 +6,152 @@ import {
   ScrollView,
   Alert,
   TextInput,
-  Modal
+  Modal,
+  RefreshControl
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
+import { usePrivy, getUserEmbeddedEthereumWallet } from '@privy-io/expo';
+import { getOrCreateSmartWallet } from '@/services/smartWallet';
+import { createPublicClient, http, parseAbi } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
+
+interface ChildAccount {
+  parent_wallet: string;
+  child_eoa: string;
+  child_name: string;
+  sub_wallet_id: number;
+  created_at: number;
+}
 
 export const SubAccountsScreen = () => {
+  const { user } = usePrivy();
+  const account = getUserEmbeddedEthereumWallet(user);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<'saver' | 'sub_account'>('saver');
+  const [subAccounts, setSubAccounts] = useState<ChildAccount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Mock sub-account data
-  const [subAccounts, setSubAccounts] = useState([
-    {
-      id: '1',
-      name: 'Family Saver',
-      type: 'saver',
-      balance: '150.00',
-      spendingLimit: '200.00',
-      spentThisPeriod: '50.00',
-      periodStart: '2024-01-01',
-      periodDuration: '30 days',
-      status: 'active',
-      childEOA: '0x742d...8a9b'
-    },
-    {
-      id: '2',
-      name: 'Kids Sub Account',
-      type: 'sub_account',
-      balance: '25.00',
-      spendingLimit: '50.00',
-      spentThisPeriod: '25.00',
-      periodStart: '2024-01-15',
-      periodDuration: '7 days',
-      status: 'active',
-      childEOA: '0x8a9b...742d'
-    },
-  ]);
+  // Fetch child accounts from smart contract
+  const fetchChildAccounts = async () => {
+    if (!account?.address) return;
+    
+    try {
+      setLoading(true);
+      console.log('🔍 Fetching sub-accounts from smart contract for:', account.address);
+      
+      // Get Privy access token
+      const { createPrivyClient } = await import('@privy-io/expo');
+      const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
+      const accessToken = await privyClient.getAccessToken();
+      
+      if (!accessToken) {
+        throw new Error("Failed to get Privy access token.");
+      }
+      
+      // Get smart wallet address first
+      const smartWalletInfo = await getOrCreateSmartWallet(account.address, accessToken);
+      const smartWalletAddress = smartWalletInfo.address;
+      
+      if (!smartWalletAddress) {
+        console.log('❌ No smart wallet found');
+        setSubAccounts([]);
+        return;
+      }
+
+      // Create viem client for smart contract queries
+      const publicClient = createPublicClient({
+        chain: arbitrumSepolia,
+        transport: http('https://sepolia-rollup.arbitrum.io/rpc')
+      });
+
+      // SmartWallet ABI for the functions we need
+      const smartWalletAbi = parseAbi([
+        'function getSubWalletCount() external view returns (uint256)',
+        'function getSubWallet(uint256 subWalletId) external view returns (address childEOA, uint256 spendingLimit, uint256 spentThisPeriod, uint256 periodStart, uint256 periodDuration, uint8 mode, bool active)'
+      ]);
+
+      // Get sub-account count
+      const subWalletCount = await publicClient.readContract({
+        address: smartWalletAddress as `0x${string}`,
+        abi: smartWalletAbi,
+        functionName: 'getSubWalletCount'
+      });
+      
+      console.log(`📊 Found ${subWalletCount} sub-accounts`);
+      
+      if (subWalletCount === 0n) {
+        setSubAccounts([]);
+        return;
+      }
+      
+      // Fetch each sub-account
+      const subAccounts = [];
+      for (let i = 1; i <= Number(subWalletCount); i++) {
+        try {
+          // Get sub-wallet details using viem
+          const subWalletData = await publicClient.readContract({
+            address: smartWalletAddress as `0x${string}`,
+            abi: smartWalletAbi,
+            functionName: 'getSubWallet',
+            args: [BigInt(i)]
+          });
+          
+          const [childEOA, spendingLimit, spentThisPeriod, periodStart, periodDuration, mode, active] = subWalletData;
+          
+          console.log(`📊 Sub-wallet ${i}:`, {
+            childEOA,
+            spendingLimit: spendingLimit.toString(),
+            spentThisPeriod: spentThisPeriod.toString(),
+            periodStart: periodStart.toString(),
+            periodDuration: periodDuration.toString(),
+            mode: Number(mode),
+            active
+          });
+          
+          subAccounts.push({
+            parent_wallet: smartWalletAddress,
+            child_eoa: childEOA,
+            child_name: `Child ${i}`, // We'll need to get this from events or store it
+            sub_wallet_id: i,
+            created_at: Number(periodStart), // Use period start as creation time
+            limit: Number(spendingLimit),
+            limit_display: (Number(spendingLimit) / 1000000).toFixed(2), // Convert from wei to PYUSD
+            spent_this_period: Number(spentThisPeriod),
+            period_duration: Number(periodDuration),
+            mode: Number(mode),
+            active: active
+          });
+        } catch (subError) {
+          console.error(`❌ Error fetching sub-account ${i}:`, subError);
+        }
+      }
+      
+      console.log('✅ Sub-accounts fetched from contract:', subAccounts);
+      setSubAccounts(subAccounts);
+      
+    } catch (error) {
+      console.error('❌ Error fetching sub-accounts:', error);
+      setSubAccounts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load data on component mount
+  useEffect(() => {
+    fetchChildAccounts();
+  }, [account?.address]);
+
+  // Handle refresh
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchChildAccounts();
+    setRefreshing(false);
+  };
 
   const getAccountTypeIcon = (type: string) => {
     switch (type) {
@@ -105,10 +213,10 @@ export const SubAccountsScreen = () => {
     Alert.alert("Success", "Sub-account created successfully!");
   };
 
-  const renderSubAccount = (account: any) => (
+  const renderSubAccount = (childAccount: ChildAccount) => (
     <TouchableOpacity
-      key={account.id}
-      onPress={() => Alert.alert("Account Details", `Name: ${account.name}\nType: ${account.type}\nBalance: $${account.balance}`)}
+      key={childAccount.sub_wallet_id}
+      onPress={() => Alert.alert("Child Account Details", `Name: ${childAccount.child_name}\nEOA: ${childAccount.child_eoa}\nSub-Wallet ID: ${childAccount.sub_wallet_id}`)}
     >
       <LinearGradient
         colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
@@ -142,27 +250,27 @@ export const SubAccountsScreen = () => {
               </YStack>
               <YStack flex={1}>
                 <Text fontSize={16} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={4}>
-                  {account.name.toUpperCase()}
+                  {childAccount.child_name.toUpperCase()}
                 </Text>
                 <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                  &gt; {account.type === 'saver' ? 'Saver' : 'Sub Account'}
+                  &gt; Sub Account
                 </Text>
               </YStack>
             </XStack>
-            <YStack backgroundColor={getStatusColor(account.status) + '20'} paddingHorizontal={12} paddingVertical={6} borderRadius={16}>
-              <Text fontSize={10} fontWeight="600" color={getStatusColor(account.status)} fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
-                {account.status.toUpperCase()}
+            <YStack backgroundColor="#34C75920" paddingHorizontal={12} paddingVertical={6} borderRadius={16}>
+              <Text fontSize={10} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold" letterSpacing={0.5}>
+                ACTIVE
               </Text>
             </YStack>
           </XStack>
 
-          {/* Balance */}
+          {/* Monthly Limit */}
           <YStack marginBottom={16} backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={12}>
             <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_700Bold" letterSpacing={1} marginBottom={4}>
-              AVAILABLE BALANCE
+              MONTHLY LIMIT
             </Text>
-            <Text fontSize={28} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
-              ${account.balance}
+            <Text fontSize={16} fontWeight="700" color="#FFFFFF" fontFamily="SpaceMono_400Regular">
+              {(childAccount as any).limit_display || '0.00'} PYUSD
             </Text>
           </YStack>
 
@@ -170,34 +278,34 @@ export const SubAccountsScreen = () => {
           <YStack gap={8} marginBottom={16}>
             <XStack justifyContent="space-between" alignItems="center">
               <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Spending Limit
+                &gt; Sub-Wallet ID
               </Text>
               <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                ${account.spendingLimit}
+                #{childAccount.sub_wallet_id}
               </Text>
             </XStack>
             <XStack justifyContent="space-between" alignItems="center">
               <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Spent This Period
+                &gt; Created
               </Text>
               <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                ${account.spentThisPeriod}
+                {new Date(childAccount.created_at * 1000).toLocaleDateString()}
               </Text>
             </XStack>
             <XStack justifyContent="space-between" alignItems="center">
               <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Period
-              </Text>
-              <Text fontSize={12} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                {account.periodDuration}
-              </Text>
-            </XStack>
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Child Wallet
+                &gt; Child EOA
               </Text>
               <Text fontSize={12} fontWeight="600" color="#0079c1" fontFamily="SpaceMono_400Regular">
-                {account.childEOA}
+                {childAccount.child_eoa.slice(0, 6)}...{childAccount.child_eoa.slice(-4)}
+              </Text>
+            </XStack>
+            <XStack justifyContent="space-between" alignItems="center">
+              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                &gt; Full EOA
+              </Text>
+              <Text fontSize={12} fontWeight="600" color="#0079c1" fontFamily="SpaceMono_400Regular">
+                {childAccount.child_eoa}
               </Text>
             </XStack>
           </YStack>
@@ -275,8 +383,25 @@ export const SubAccountsScreen = () => {
       </YStack>
 
       {/* Content */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingHorizontal: 16 }}>
-        {subAccounts.length > 0 ? (
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={{ paddingHorizontal: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0079c1"
+          />
+        }
+      >
+        {loading ? (
+          <YStack alignItems="center" paddingVertical={48}>
+            <Ionicons name="hourglass-outline" size={48} color="rgba(255,255,255,0.3)" />
+            <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16}>
+              Loading Sub-Accounts...
+            </Text>
+          </YStack>
+        ) : subAccounts.length > 0 ? (
           subAccounts.map(renderSubAccount)
         ) : (
           <YStack alignItems="center" paddingVertical={48}>
@@ -285,7 +410,7 @@ export const SubAccountsScreen = () => {
               No Sub-Accounts Yet
             </Text>
             <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center" marginBottom={24}>
-              &gt; Create sub-accounts to manage family finances
+              &gt; Scan a child's QR code to create their sub-account
             </Text>
             <TouchableOpacity
               onPress={() => setShowCreateModal(true)}

@@ -14,9 +14,10 @@ import SendScreen from "./SendScreen";
 import { ProfileScreen } from "./ProfileScreen";
 import { QRScannerScreen } from "./QRScannerScreen";
 import { PaymentConfirmationScreen } from "./PaymentConfirmationScreen";
+import { SubAccountCreationScreen } from "./SubAccountCreationScreen";
 import { ContactsScreen } from "./ContactsScreen";
 
-type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan' | 'contacts';
+type TabType = 'balance' | 'transactions' | 'subaccounts' | 'profile' | 'send' | 'scan' | 'contacts' | 'subaccount-creation';
 
 export const MainNavigation = () => {
   const [activeTab, setActiveTab] = useState<TabType>('balance');
@@ -32,7 +33,12 @@ export const MainNavigation = () => {
 
   const handleQRScanned = (qrData: any) => {
     setScannedQRData(qrData);
-    setActiveTab('payment-confirmation' as any);
+    // Check if it's a sub-account request or payment request
+    if (qrData.type === 'subaccount_request') {
+      setActiveTab('subaccount-creation');
+    } else {
+      setActiveTab('payment-confirmation' as any);
+    }
   };
 
   const handlePaymentComplete = () => {
@@ -45,6 +51,16 @@ export const MainNavigation = () => {
     setActiveTab('scan');
   };
 
+  const handleSubAccountComplete = (subWalletId: number) => {
+    setScannedQRData(null);
+    setActiveTab('subaccounts');
+  };
+
+  const handleSubAccountCancel = () => {
+    setScannedQRData(null);
+    setActiveTab('scan');
+  };
+
   const handleNavigateToSend = (walletAddress: string, username?: string) => {
     setSelectedRecipient({ address: walletAddress, username });
     handleTabChange('send');
@@ -52,6 +68,17 @@ export const MainNavigation = () => {
 
   const renderScreen = () => {
     if (scannedQRData) {
+      // Check if it's a sub-account request
+      if (scannedQRData.type === 'subaccount_request') {
+        return (
+          <SubAccountCreationScreen
+            qrData={scannedQRData}
+            onClose={handleSubAccountCancel}
+            onSuccess={handleSubAccountComplete}
+          />
+        );
+      }
+      // Otherwise it's a payment request
       return (
         <PaymentConfirmationScreen
           qrData={scannedQRData}
@@ -101,6 +128,20 @@ export const MainNavigation = () => {
         <View style={{ display: activeTab === 'contacts' ? 'flex' : 'none', flex: 1 }}>
           <ContactsScreen onNavigateToSend={handleNavigateToSend} />
         </View>
+        {activeTab === 'subaccount-creation' && scannedQRData && (
+          <SubAccountCreationScreen
+            qrData={scannedQRData}
+            onClose={handleSubAccountCancel}
+            onSuccess={handleSubAccountComplete}
+          />
+        )}
+        {activeTab === 'payment-confirmation' && scannedQRData && (
+          <PaymentConfirmationScreen
+            qrData={scannedQRData}
+            onComplete={handlePaymentComplete}
+            onCancel={handlePaymentCancel}
+          />
+        )}
       </>
     );
   };
@@ -195,23 +236,23 @@ export const MainNavigation = () => {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'contacts' && styles.activeTab]}
+          style={[styles.tab, activeTab === 'subaccounts' && styles.activeTab]}
           onPress={() => {
-            if (activeTab !== 'contacts') {
-              handleTabChange('contacts');
+            if (activeTab !== 'subaccounts') {
+              handleTabChange('subaccounts');
             }
           }}
         >
           <Ionicons
-            name={getTabIcon('contacts')}
+            name={getTabIcon('subaccounts')}
             size={24}
-            color={activeTab === 'contacts' ? '#0070BA' : '#8E8E93'}
+            color={activeTab === 'subaccounts' ? '#0070BA' : '#8E8E93'}
           />
           <Text style={[
             styles.tabLabel,
-            activeTab === 'contacts' && styles.activeTabLabel
+            activeTab === 'subaccounts' && styles.activeTabLabel
           ]}>
-            {getTabLabel('contacts')}
+            {getTabLabel('subaccounts')}
           </Text>
         </TouchableOpacity>
 
