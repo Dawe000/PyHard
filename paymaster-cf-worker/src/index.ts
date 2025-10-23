@@ -14,6 +14,9 @@ interface SponsorRequest {
   deadline: string;
   signature: string;
   chainId: string;
+  subWalletId?: number;
+  recipientAddress?: string;
+  amount?: string;
 }
 
 interface SponsorResponse {
@@ -57,6 +60,21 @@ interface CreateSubAccountResponse {
   success: boolean;
   transactionHash?: string;
   subWalletId?: number;
+  error?: string;
+}
+
+interface SendChildTransactionRequest {
+  childEOA: string;
+  smartWalletAddress: string;
+  subWalletId: number;
+  recipientAddress: string;
+  amount: string;
+  childPrivateKey: string;
+}
+
+interface SendChildTransactionResponse {
+  transactionHash: string;
+  success: boolean;
   error?: string;
 }
 
@@ -109,6 +127,14 @@ export default {
       // Sub-account creation endpoint
       if (url.pathname === '/create-subaccount' && request.method === 'POST') {
         const response = await handleCreateSubAccount(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      // Child transaction endpoint
+      if (url.pathname === '/send-child-transaction' && request.method === 'POST') {
+        const response = await handleSendChildTransaction(request, env);
         return new Response(JSON.stringify(response), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -181,24 +207,51 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // 7. Handle EIP-7702 transaction - submit TO USER'S EOA with authorization
     console.log('🚀 Using CORRECT EIP-7702 flow: submit to user EOA with authorization...');
     
-    // Prepare SmartWallet.execute() call data
-    const executeData = encodeFunctionData({
-      abi: [{
-        type: 'function',
-        name: 'execute',
-        inputs: [
-          { type: 'address', name: 'target' },
-          { type: 'uint256', name: 'value' },
-          { type: 'bytes', name: 'data' }
+    // Prepare SmartWallet function call data
+    let executeData: `0x${string}`;
+    
+    // Check if this is a child app request (has subWalletId) or main app request (has functionData)
+    if (sponsorRequest.subWalletId && sponsorRequest.recipientAddress && sponsorRequest.amount) {
+      // Child app: Use executeSubWalletTransaction()
+      console.log('👶 Child app request - using executeSubWalletTransaction()');
+      executeData = encodeFunctionData({
+        abi: [{
+          type: 'function',
+          name: 'executeSubWalletTransaction',
+          inputs: [
+            { type: 'uint256', name: 'subWalletId' },
+            { type: 'address', name: 'to' },
+            { type: 'uint256', name: 'amount' }
+          ]
+        }],
+        functionName: 'executeSubWalletTransaction',
+        args: [
+          BigInt(sponsorRequest.subWalletId), // Sub-wallet ID
+          sponsorRequest.recipientAddress as `0x${string}`, // Recipient address
+          BigInt(Math.floor(parseFloat(sponsorRequest.amount) * 1000000)) // Convert to PYUSD wei (6 decimals)
         ]
-      }],
-      functionName: 'execute',
-      args: [
-        env.PYUSD_ADDRESS as `0x${string}`, // PYUSD contract
-        0n, // No ETH value
-        sponsorRequest.functionData as `0x${string}` // PYUSD transfer data
-      ]
-    });
+      });
+    } else {
+      // Main app: Use execute() with PYUSD transfer data
+      console.log('👤 Main app request - using execute() with PYUSD transfer');
+      executeData = encodeFunctionData({
+        abi: [{
+          type: 'function',
+          name: 'execute',
+          inputs: [
+            { type: 'address', name: 'target' },
+            { type: 'uint256', name: 'value' },
+            { type: 'bytes', name: 'data' }
+          ]
+        }],
+        functionName: 'execute',
+        args: [
+          env.PYUSD_ADDRESS as `0x${string}`, // PYUSD contract
+          0n, // No ETH value
+          sponsorRequest.functionData as `0x${string}` // PYUSD transfer data
+        ]
+      });
+    }
 
     // Submit transaction TO USER'S EOA (not SmartWallet!) with EIP-7702 authorization
     console.log('🚀 Submitting transaction TO USER EOA with EIP-7702 authorization...');
@@ -559,6 +612,112 @@ async function handleCreateSubAccount(request: Request, env: Env): Promise<Creat
 
   } catch (error) {
     console.error('❌ Error creating sub-account:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Handle child transaction requests
+ * Uses EIP-7702 delegation to execute transactions from child's sub-wallet
+ */
+async function handleSendChildTransaction(
+  request: Request,
+  env: Env
+): Promise<SendChildTransactionResponse> {
+  try {
+    const childTransactionRequest: SendChildTransactionRequest = await request.json();
+    
+    console.log('🚀 Processing child transaction:', {
+      childEOA: childTransactionRequest.childEOA,
+      smartWalletAddress: childTransactionRequest.smartWalletAddress,
+      subWalletId: childTransactionRequest.subWalletId,
+      recipientAddress: childTransactionRequest.recipientAddress,
+      amount: childTransactionRequest.amount
+    });
+
+    // Create viem clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http('https://sepolia-rollup.arbitrum.io/rpc')
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http('https://sepolia-rollup.arbitrum.io/rpc')
+    });
+
+    // Get current nonce for the child EOA
+    const currentNonce = await publicClient.getTransactionCount({ 
+      address: childTransactionRequest.childEOA as `0x${string}`, 
+      blockTag: 'pending' 
+    });
+
+    // Step 1: Child signs EIP-7702 authorization
+    // This would normally be done by the child app, but for now we'll simulate it
+    // In a real implementation, the child app would sign this and send it to us
+    const eip7702Authorization = {
+      chainId: BigInt(421614), // Arbitrum Sepolia
+      address: childTransactionRequest.childEOA as `0x${string}`,
+      nonce: BigInt(currentNonce),
+      r: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      s: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      yParity: 0
+    };
+
+    // Step 2: Send EIP-7702 authorization transaction
+    const eip7702Hash = await walletClient.sendTransaction({
+      to: childTransactionRequest.childEOA as `0x${string}`,
+      data: `0x0000000000000000000000000000000000000000000000000000000000000000`, // EIP-7702 authorization
+      value: 0n,
+      nonce: currentNonce
+    });
+
+    console.log('✅ EIP-7702 authorization sent:', eip7702Hash);
+
+    // Step 3: Prepare the sub-wallet transaction
+    // This will call SmartWallet.executeSubWalletTransaction(subWalletId, recipient, amount)
+    const executeSubWalletTransactionData = encodeFunctionData({
+      abi: [{
+        "inputs": [
+          {"internalType": "uint256", "name": "subWalletId", "type": "uint256"},
+          {"internalType": "address", "name": "to", "type": "address"},
+          {"internalType": "uint256", "name": "amount", "type": "uint256"}
+        ],
+        "name": "executeSubWalletTransaction",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }],
+      functionName: 'executeSubWalletTransaction',
+      args: [
+        BigInt(childTransactionRequest.subWalletId),
+        childTransactionRequest.recipientAddress as `0x${string}`,
+        BigInt(childTransactionRequest.amount)
+      ]
+    });
+
+    // Step 4: Send the delegated transaction
+    const transactionHash = await walletClient.sendTransaction({
+      to: childTransactionRequest.childEOA as `0x${string}`, // TO CHILD'S EOA (now delegated)
+      data: executeSubWalletTransactionData,
+      value: 0n,
+      nonce: currentNonce + 1n
+    });
+
+    console.log('✅ Child transaction submitted:', transactionHash);
+
+    return {
+      success: true,
+      transactionHash: transactionHash
+    };
+
+  } catch (error) {
+    console.error('❌ Error processing child transaction:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

@@ -5,14 +5,18 @@ import { StyleSheet, SafeAreaView } from 'react-native';
 import { GetStartedScreen } from './components/GetStartedScreen';
 import { QRCodeDisplay } from './components/QRCodeDisplay';
 import { ChildHomeScreen } from './components/ChildHomeScreen';
+import { SendMoneyScreen } from './components/SendMoneyScreen';
+import { ContactsScreen } from './components/ContactsScreen';
 import { QRCodeData } from './utils/qrCodeUtils';
 import { startSubWalletPolling, ParentWalletInfo } from './services/subWalletDetection';
 import { loadChildWallet } from './utils/crypto';
+import { UserProfile } from './services/userSearchService';
 
 export default function App() {
   const [qrData, setQrData] = useState<QRCodeData | null>(null);
   const [walletInfo, setWalletInfo] = useState<ParentWalletInfo | null>(null);
-  const [currentScreen, setCurrentScreen] = useState<'get-started' | 'qr-display' | 'home'>('get-started');
+  const [currentScreen, setCurrentScreen] = useState<'get-started' | 'qr-display' | 'home' | 'send-money' | 'contacts'>('get-started');
+  const [selectedContact, setSelectedContact] = useState<UserProfile | null>(null);
 
   const handleQRGenerated = (data: QRCodeData) => {
     setQrData(data);
@@ -26,6 +30,27 @@ export default function App() {
 
   const handleBackToQR = () => {
     setCurrentScreen('qr-display');
+  };
+
+  const handleSendMoney = () => {
+    setCurrentScreen('send-money');
+  };
+
+  const handleBackToHome = () => {
+    setCurrentScreen('home');
+  };
+
+  const handleOpenContacts = () => {
+    setCurrentScreen('contacts');
+  };
+
+  const handleBackToSend = () => {
+    setCurrentScreen('send-money');
+  };
+
+  const handleSelectContact = (user: UserProfile) => {
+    setSelectedContact(user);
+    setCurrentScreen('send-money');
   };
 
   const handleSubWalletDetected = (info: ParentWalletInfo) => {
@@ -83,6 +108,23 @@ export default function App() {
           <ChildHomeScreen 
             onBack={handleBackToQR}
             walletInfo={walletInfo}
+            onSendMoney={handleSendMoney}
+          />
+        );
+      case 'send-money':
+        return (
+          <SendMoneyScreen
+            onBack={handleBackToHome}
+            walletInfo={walletInfo}
+            onOpenContacts={handleOpenContacts}
+            selectedContact={selectedContact ? { name: selectedContact.display_name || selectedContact.username || 'Unknown', address: selectedContact.wallet_address } : null}
+          />
+        );
+      case 'contacts':
+        return (
+          <ContactsScreen
+            onBack={handleBackToSend}
+            onSelectContact={handleSelectContact}
           />
         );
       case 'qr-display':

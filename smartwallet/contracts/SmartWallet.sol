@@ -70,23 +70,16 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
             return;
         }
         
-        // Check if this is an EIP-7702 delegated call
-        // In EIP-7702, the EOA's code is temporarily set to a contract
-        // We need to check if the call is coming from the owner's EOA
-        // but with different code (delegated)
+        // Check if this is an EIP-7702 delegated call from a child EOA
+        // In EIP-7702, the child's EOA is delegated to EOADelegation
+        // The msg.sender is the child's EOA, not the EOADelegation contract
         
-        // For now, we'll allow calls from the EOADelegation contract
-        // when the transaction is sent to the owner's EOA
-        // This is a simplified approach - in production you'd want more robust checks
-        
-        // Check if the call is coming from a known delegation contract
-        // and the transaction is being sent to the owner's EOA
-        address eoaDelegation = 0x0977081db8717cB860716EDCD117eF1FBf108857;
-        if (msg.sender == eoaDelegation) {
-            // Additional check: verify this is a delegated call
-            // by checking if the caller is authorized
-            _;
-            return;
+        // Check if the caller is a child EOA with an active sub-wallet
+        for (uint256 i = 1; i <= subWalletCount; i++) {
+            if (subWallets[i].childEOA == msg.sender && subWallets[i].active) {
+                _;
+                return;
+            }
         }
         
         // If none of the above conditions are met, revert
@@ -96,7 +89,7 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
     // Simplified implementation for testing
     
     // Core execution functions
-    function execute(address target, uint256 value, bytes calldata data) external onlyOwner {
+    function execute(address target, uint256 value, bytes calldata data) external onlyOwnerOrDelegated {
         _execute(target, value, data);
     }
     

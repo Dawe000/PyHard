@@ -7,9 +7,10 @@ import { loadChildWallet } from '../utils/crypto';
 interface ChildHomeScreenProps {
   onBack: () => void;
   walletInfo: ParentWalletInfo | null;
+  onSendMoney?: () => void;
 }
 
-export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, walletInfo }) => {
+export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, walletInfo, onSendMoney }) => {
   const [loading, setLoading] = useState(true);
   const [childEOA, setChildEOA] = useState<string>('');
 
@@ -39,11 +40,15 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
   }, [walletInfo]);
 
   const handleSendMoney = () => {
-    Alert.alert(
-      'Send Money', 
-      'Send money functionality coming soon!\n\nThis will allow you to send PYUSD to other addresses using your sub-wallet.',
-      [{ text: 'OK' }]
-    );
+    if (onSendMoney) {
+      onSendMoney();
+    } else {
+      Alert.alert(
+        'Send Money', 
+        'Send money functionality coming soon!\n\nThis will allow you to send PYUSD to other addresses using your sub-wallet.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleViewTransactions = () => {
