@@ -1,163 +1,170 @@
-// Profile Service - Uses AsyncStorage for local data persistence (perfect for hackathon!)
+// Cloudflare Worker API base URL
+const API_BASE_URL = 'https://pyusd-contacts-api.dawid-pisarczyk.workers.dev';
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+export interface UserProfile {
+  id?: number;
+  wallet_address: string;
+  username?: string;
+  display_name?: string;
+  avatar_url?: string;
+  bio?: string;
+  created_at?: number;
+  updated_at?: number;
+}
 
-export interface ENSCheckResponse {
+export interface RecentSend {
+  to_wallet_address: string;
+  last_sent_at: number;
+  username?: string;
+  display_name?: string;
+  avatar_url?: string;
+}
+
+/**
+ * Create or update user profile
+ */
+export async function saveProfile(profile: UserProfile): Promise<{ success: boolean }> {
+  try {
+    console.log('Saving profile:', profile);
+    const response = await fetch(`${API_BASE_URL}/profile`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(profile),
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Error response:', errorText);
+      throw new Error(`Failed to save profile: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('Save profile result:', result);
+    return result;
+  } catch (error) {
+    console.error('Error saving profile:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get user profile by wallet address or username
+ */
+export async function getProfile(identifier: string): Promise<UserProfile | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/profile/${identifier.toLowerCase()}`);
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch profile: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.profile || null;
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    throw error;
+  }
+}
+
+/**
+ * Search for users by username or display name
+ */
+export async function searchUsers(query: string): Promise<UserProfile[]> {
+  try {
+    if (query.length < 2) {
+      return [];
+    }
+
+    const response = await fetch(
+      `${API_BASE_URL}/search?q=${encodeURIComponent(query)}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to search users: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.users || [];
+  } catch (error) {
+    console.error('Error searching users:', error);
+    throw error;
+  }
+}
+
+/**
+ * Check if a username is available
+ */
+export async function checkUsernameAvailability(username: string): Promise<{
   available: boolean;
-  name: string;
-}
-
-export interface ENSRegisterResponse {
-  success: boolean;
-  transactionHash?: string;
   error?: string;
-}
-
-// Storage keys
-const STORAGE_KEYS = {
-  DISPLAY_NAME: 'profile_display_name',
-  ENS_NAME: 'profile_ens_name',
-  AVATAR_URL: 'profile_avatar_url',
-  ENS_REGISTRY: 'ens_registry', // JSON array of registered ENS names
-};
-
-/**
- * Check if an ENS name is available
- * @param ensName - The ENS name to check (without .pyusd.eth suffix)
- */
-export async function checkENSAvailability(ensName: string): Promise<boolean> {
+}> {
   try {
-    console.log('🔍 Checking ENS availability for:', ensName);
+    const response = await fetch(`${API_BASE_URL}/check-username/${username.toLowerCase()}`);
 
-    // Check local AsyncStorage registry
-    const registryJson = await AsyncStorage.getItem(STORAGE_KEYS.ENS_REGISTRY);
-    const registry: string[] = registryJson ? JSON.parse(registryJson) : [];
+    if (!response.ok) {
+      throw new Error(`Failed to check username: ${response.statusText}`);
+    }
 
-    const available = !registry.includes(ensName.toLowerCase());
-
-    console.log('✅ ENS availability result:', available);
-    return available;
+    return await response.json();
   } catch (error) {
-    console.error('❌ Error checking ENS availability:', error);
-    return true; // Default to available on error
+    console.error('Error checking username:', error);
+    throw error;
   }
 }
 
 /**
- * Register an ENS name for the user (saves to AsyncStorage)
- * @param ensName - The ENS name to register (without .pyusd.eth suffix)
- * @param eoaAddress - User's EOA address
- * @param smartWalletAddress - User's smart wallet address
+ * Get recent sends for a user
  */
-export async function registerENS(
-  ensName: string,
-  eoaAddress: string,
-  smartWalletAddress: string,
-  _privyToken: string // Keep signature compatible but unused
-): Promise<ENSRegisterResponse> {
+export async function getRecentSends(walletAddress: string): Promise<RecentSend[]> {
   try {
-    console.log('🚀 Registering ENS name:', ensName);
-    console.log('📊 EOA:', eoaAddress);
-    console.log('📊 Smart Wallet:', smartWalletAddress);
+    const response = await fetch(`${API_BASE_URL}/recent/${walletAddress.toLowerCase()}`);
 
-    // Check if already registered
-    const registryJson = await AsyncStorage.getItem(STORAGE_KEYS.ENS_REGISTRY);
-    const registry: string[] = registryJson ? JSON.parse(registryJson) : [];
-
-    if (registry.includes(ensName.toLowerCase())) {
-      return {
-        success: false,
-        error: 'ENS name already registered',
-      };
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recent sends: ${response.statusText}`);
     }
 
-    // Add to registry
-    registry.push(ensName.toLowerCase());
-    await AsyncStorage.setItem(STORAGE_KEYS.ENS_REGISTRY, JSON.stringify(registry));
-
-    // Save as user's ENS name
-    await AsyncStorage.setItem(STORAGE_KEYS.ENS_NAME, ensName.toLowerCase());
-
-    // Generate mock transaction hash
-    const txHash = `0x${Math.random().toString(16).slice(2).padStart(64, '0')}`;
-
-    console.log('✅ ENS registered successfully (local storage)');
-    return {
-      success: true,
-      transactionHash: txHash,
-    };
+    const data = await response.json();
+    return data.recent || [];
   } catch (error) {
-    console.error('❌ Error registering ENS:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
+    console.error('Error fetching recent sends:', error);
+    throw error;
   }
 }
 
 /**
- * Save user profile data to AsyncStorage
- * @param eoaAddress - User's EOA address (unused but kept for compatibility)
- * @param profileData - Profile data to save
+ * Track a recent send (for recent recipients list)
  */
-export async function saveProfile(
-  _eoaAddress: string,
-  profileData: {
-    displayName?: string;
-    ensName?: string;
-    avatarUrl?: string;
-  },
-  _privyToken: string // Keep signature compatible but unused
-): Promise<boolean> {
+export async function trackRecentSend(
+  fromWalletAddress: string,
+  toWalletAddress: string
+): Promise<{ success: boolean }> {
   try {
-    console.log('💾 Saving profile to AsyncStorage');
-    console.log('📊 Profile data:', profileData);
+    const response = await fetch(`${API_BASE_URL}/recent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_wallet_address: fromWalletAddress,
+        to_wallet_address: toWalletAddress,
+      }),
+    });
 
-    // Save each field to AsyncStorage
-    if (profileData.displayName !== undefined) {
-      await AsyncStorage.setItem(STORAGE_KEYS.DISPLAY_NAME, profileData.displayName);
-    }
-    if (profileData.ensName !== undefined) {
-      await AsyncStorage.setItem(STORAGE_KEYS.ENS_NAME, profileData.ensName);
-    }
-    if (profileData.avatarUrl !== undefined) {
-      await AsyncStorage.setItem(STORAGE_KEYS.AVATAR_URL, profileData.avatarUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to track recent send: ${response.statusText}`);
     }
 
-    console.log('✅ Profile saved successfully');
-    return true;
+    return await response.json();
   } catch (error) {
-    console.error('❌ Error saving profile:', error);
-    return false;
-  }
-}
-
-/**
- * Load user profile data from AsyncStorage
- * @param eoaAddress - User's EOA address (unused but kept for compatibility)
- */
-export async function loadProfile(_eoaAddress: string): Promise<{
-  displayName?: string;
-  ensName?: string;
-  avatarUrl?: string;
-} | null> {
-  try {
-    console.log('📥 Loading profile from AsyncStorage');
-
-    const displayName = await AsyncStorage.getItem(STORAGE_KEYS.DISPLAY_NAME);
-    const ensName = await AsyncStorage.getItem(STORAGE_KEYS.ENS_NAME);
-    const avatarUrl = await AsyncStorage.getItem(STORAGE_KEYS.AVATAR_URL);
-
-    const profile = {
-      displayName: displayName || undefined,
-      ensName: ensName || undefined,
-      avatarUrl: avatarUrl || undefined,
-    };
-
-    console.log('✅ Profile loaded:', profile);
-    return profile;
-  } catch (error) {
-    console.error('❌ Error loading profile:', error);
-    return null;
+    console.error('Error tracking recent send:', error);
+    throw error;
   }
 }

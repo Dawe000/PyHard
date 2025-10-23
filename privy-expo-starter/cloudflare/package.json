@@ -1,0 +1,16 @@
+{
+  "name": "pyusd-contacts-api",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker API for PYUSD contacts management",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create pyusd-contacts",
+    "db:migrate": "wrangler d1 execute pyusd-contacts --file=./schema.sql"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "wrangler": "^3.94.0"
+  }
+}

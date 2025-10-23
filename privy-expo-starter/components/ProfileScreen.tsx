@@ -5,19 +5,25 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from "@expo/vector-icons";
 import { usePrivy } from "@privy-io/expo";
 import { getOrCreateSmartWallet } from "@/services/smartWallet";
-import { checkENSAvailability, registerENS, loadProfile as loadProfileData, saveProfile } from "@/services/profileService";
+import {
+  getProfile,
+  saveProfile as saveUserProfile,
+  checkUsernameAvailability,
+  UserProfile,
+} from "@/services/profileService";
 
 export const ProfileScreen = () => {
   const { user, logout, getAccessToken } = usePrivy();
 
   // Profile state
   const [displayName, setDisplayName] = useState("");
-  const [ensName, setENSName] = useState("");
-  const [isEditingName, setIsEditingName] = useState(false);
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isCheckingENS, setIsCheckingENS] = useState(false);
-  const [isRegisteringENS, setIsRegisteringENS] = useState(false);
-  const [ensAvailable, setENSAvailable] = useState<boolean | null>(null);
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [smartWalletAddress, setSmartWalletAddress] = useState("");
 
   // User info - extract from linked_accounts
@@ -33,13 +39,15 @@ export const ProfileScreen = () => {
   }, [user]);
 
   const loadProfile = useCallback(async () => {
-    if (!user) return;
+    if (!user || !userWallet) return;
 
     try {
-      const profileData = await loadProfileData(userWallet || '');
+      const profileData = await getProfile(userWallet);
 
-      if (profileData?.displayName) {
-        setDisplayName(profileData.displayName);
+      if (profileData) {
+        setDisplayName(profileData.display_name || '');
+        setUsername(profileData.username || '');
+        setBio(profileData.bio || '');
       } else if (userEmail) {
         const emailPrefix = userEmail.split('@')[0];
         setDisplayName(emailPrefix);
@@ -55,95 +63,76 @@ export const ProfileScreen = () => {
     } catch (error) {
       console.error("Failed to load profile:", error);
     }
-  }, [user, userWallet, getAccessToken]);
+  }, [user, userWallet, userEmail, getAccessToken]);
 
-  const handleSaveName = useCallback(async () => {
-    if (!displayName.trim()) {
-      Alert.alert("Error", "Please enter a display name");
+  const handleCheckUsername = useCallback(async () => {
+    if (!username.trim()) {
+      setUsernameError("Please enter a username");
       return;
+    }
+
+    const usernameRegex = /^[a-z0-9_]{3,20}$/;
+    if (!usernameRegex.test(username)) {
+      setUsernameError("Username must be 3-20 characters (lowercase letters, numbers, underscore only)");
+      setUsernameAvailable(false);
+      return;
+    }
+
+    setIsCheckingUsername(true);
+    setUsernameAvailable(null);
+    setUsernameError(null);
+
+    try {
+      const result = await checkUsernameAvailability(username);
+      setUsernameAvailable(result.available);
+
+      if (!result.available) {
+        setUsernameError(result.error || "Username is already taken");
+      }
+    } catch (error: any) {
+      setUsernameError("Failed to check username availability");
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  }, [username]);
+
+  const handleSaveProfile = useCallback(async () => {
+    if (!userWallet) {
+      Alert.alert("Error", "Wallet not connected");
+      return;
+    }
+
+    // Validate username if changed
+    if (username && username.trim()) {
+      const usernameRegex = /^[a-z0-9_]{3,20}$/;
+      if (!usernameRegex.test(username)) {
+        Alert.alert("Error", "Username must be 3-20 characters (lowercase letters, numbers, underscore only)");
+        return;
+      }
     }
 
     setIsSavingProfile(true);
     try {
-      const token = await getAccessToken();
-      await saveProfile(userWallet || '', { displayName }, token || '');
-      Alert.alert("Success", "Display name saved!");
-      setIsEditingName(false);
+      const profileUpdate: UserProfile = {
+        wallet_address: userWallet,
+        display_name: displayName.trim() || undefined,
+        username: username.trim() || undefined,
+        bio: bio.trim() || undefined,
+      };
+
+      await saveUserProfile(profileUpdate);
+      Alert.alert("Success", "Profile saved!");
+      setIsEditingProfile(false);
+      setUsernameAvailable(null);
+      setUsernameError(null);
     } catch (error: any) {
-      Alert.alert("Error", `Failed to save: ${error.message}`);
+      Alert.alert("Error", `Failed to save profile: ${error.message}`);
     } finally {
       setIsSavingProfile(false);
     }
-  }, [displayName, userWallet, getAccessToken]);
+  }, [displayName, username, bio, userWallet]);
 
-  const handleCheckENS = useCallback(async () => {
-    if (!ensName.trim()) {
-      Alert.alert("Error", "Please enter an ENS name to check");
-      return;
-    }
-
-    if (!/^[a-z0-9-]+$/.test(ensName)) {
-      Alert.alert("Error", "ENS name can only contain lowercase letters, numbers, and hyphens");
-      return;
-    }
-
-    setIsCheckingENS(true);
-    setENSAvailable(null);
-
-    try {
-      const available = await checkENSAvailability(ensName);
-      setENSAvailable(available);
-
-      if (available) {
-        Alert.alert(
-          "Available! 🎉",
-          `${ensName}.pyusd.eth is available!\n\nWould you like to register it?`,
-          [
-            { text: "Not Now", style: "cancel" },
-            { text: "Register", onPress: handleRegisterENS }
-          ]
-        );
-      } else {
-        Alert.alert("Unavailable", `${ensName}.pyusd.eth is already taken. Try another name.`);
-      }
-    } catch (error: any) {
-      Alert.alert("Error", `Failed to check availability: ${error.message}`);
-    } finally {
-      setIsCheckingENS(false);
-    }
-  }, [ensName]);
-
-  const handleRegisterENS = useCallback(async () => {
-    if (!ensName.trim() || !userWallet || !smartWalletAddress) {
-      Alert.alert("Error", "Missing required information for ENS registration");
-      return;
-    }
-
-    setIsRegisteringENS(true);
-
-    try {
-      const token = await getAccessToken();
-      if (!token) throw new Error("Failed to get access token");
-
-      const result = await registerENS(ensName, userWallet, smartWalletAddress, token);
-
-      if (result.success) {
-        Alert.alert(
-          "Success! 🎉",
-          `${ensName}.pyusd.eth has been registered!\n\nTransaction: ${result.transactionHash}`,
-        );
-        setENSName("");
-        setENSAvailable(null);
-      } else {
-        throw new Error(result.error || "Registration failed");
-      }
-    } catch (error: any) {
-      Alert.alert("Error", `Failed to register ENS: ${error.message}`);
-    } finally {
-      setIsRegisteringENS(false);
-    }
-  }, [ensName, userWallet, smartWalletAddress, getAccessToken]);
-
+  
   return (
     <RNSafeAreaView style={{ flex: 1, backgroundColor: '#0a0e27' }}>
       <ScrollView flex={1} backgroundColor="#0a0e27">
@@ -241,69 +230,18 @@ export const ProfileScreen = () => {
                 </Text>
               </XStack>
 
-              {isEditingName ? (
-                <YStack gap={12}>
-                  <Input
-                    size="$4"
-                    value={displayName}
-                    onChangeText={setDisplayName}
-                    placeholder="Enter your display name"
-                    autoFocus
-                    backgroundColor="rgba(255,255,255,0.05)"
-                    borderColor="rgba(0,121,193,0.3)"
-                    color="#FFFFFF"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    fontFamily="SpaceMono_400Regular"
-                    focusStyle={{ borderColor: '#0079c1' }}
-                  />
-                  <XStack gap={12}>
-                    <Button
-                      flex={1}
-                      onPress={() => setIsEditingName(false)}
-                      backgroundColor="rgba(255,255,255,0.1)"
-                      borderColor="rgba(255,255,255,0.2)"
-                      borderWidth={1}
-                      pressStyle={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
-                    >
-                      <Text color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">Cancel</Text>
-                    </Button>
-                    <Button
-                      flex={1}
-                      onPress={handleSaveName}
-                      disabled={isSavingProfile}
-                      backgroundColor="#0079c1"
-                      borderWidth={1}
-                      borderColor="rgba(255,255,255,0.2)"
-                      pressStyle={{ backgroundColor: '#006ba8' }}
-                    >
-                      {isSavingProfile ? <Spinner color="#FFFFFF" /> : <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">Save</Text>}
-                    </Button>
-                  </XStack>
+              <YStack gap={12}>
+                <YStack backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={8} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
+                  <Text fontSize={15} color="#FFFFFF" fontWeight="500" fontFamily="SpaceMono_400Regular">
+                    {displayName || "[ NOT_SET ]"}
+                  </Text>
                 </YStack>
-              ) : (
-                <YStack gap={12}>
-                  <YStack backgroundColor="rgba(0,121,193,0.1)" padding={12} borderRadius={8} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
-                    <Text fontSize={15} color="#FFFFFF" fontWeight="500" fontFamily="SpaceMono_400Regular">
-                      {displayName || "[ NOT_SET ]"}
-                    </Text>
-                  </YStack>
-                  <Button
-                    onPress={() => setIsEditingName(true)}
-                    backgroundColor="rgba(0,121,193,0.15)"
-                    borderColor="#0079c1"
-                    borderWidth={1}
-                    icon={<Ionicons name="pencil" size={16} color="#FFFFFF" />}
-                    pressStyle={{ backgroundColor: 'rgba(0,121,193,0.25)' }}
-                  >
-                    <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">EDIT NAME</Text>
-                  </Button>
-                </YStack>
-              )}
+              </YStack>
             </YStack>
           </LinearGradient>
         </YStack>
 
-        {/* ENS Registration Card */}
+        {/* Edit Profile Card */}
         <YStack marginHorizontal={16} marginTop={16}>
           <LinearGradient
             colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
@@ -313,28 +251,26 @@ export const ProfileScreen = () => {
           >
             <YStack backgroundColor="rgba(10,14,39,0.6)" borderRadius={19} padding={20} borderWidth={1} borderColor="rgba(0,121,193,0.2)">
               <XStack alignItems="center" marginBottom={8} gap={8}>
-                <Ionicons name="globe" size={20} color="#0079c1" />
+                <Ionicons name="create" size={20} color="#0079c1" />
                 <Text fontSize={16} fontWeight="700" color="#FFFFFF" flex={1} fontFamily="SpaceGrotesk_700Bold">
-                  ENS NAME
+                  EDIT PROFILE
                 </Text>
               </XStack>
 
-              <Text fontSize={12} color="rgba(255,255,255,0.6)" marginBottom={12} fontFamily="SpaceMono_400Regular">
-                &gt; Register custom .pyusd.eth domain
+              <Text fontSize={12} color="rgba(255,255,255,0.6)" marginBottom={16} fontFamily="SpaceMono_400Regular">
+                &gt; Set your username and display name
               </Text>
 
-              <XStack alignItems="center" gap={8} marginBottom={12}>
+              {/* Display Name Input */}
+              <YStack marginBottom={16}>
+                <Text fontSize={12} color="rgba(255,255,255,0.7)" marginBottom={8} fontFamily="SpaceGrotesk_600SemiBold">
+                  Display Name
+                </Text>
                 <Input
-                  flex={1}
                   size="$4"
-                  value={ensName}
-                  onChangeText={(text) => {
-                    setENSName(text.toLowerCase().replace(/[^a-z0-9-]/g, ''));
-                    setENSAvailable(null);
-                  }}
-                  placeholder="yourname"
-                  autoCapitalize="none"
-                  autoCorrect={false}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder="Enter your display name"
                   backgroundColor="rgba(255,255,255,0.05)"
                   borderColor="rgba(0,121,193,0.3)"
                   color="#FFFFFF"
@@ -342,70 +278,126 @@ export const ProfileScreen = () => {
                   fontFamily="SpaceMono_400Regular"
                   focusStyle={{ borderColor: '#0079c1' }}
                 />
-                <Text fontSize={14} color="rgba(255,255,255,0.6)" fontWeight="500" fontFamily="SpaceMono_700Bold">
-                  .pyusd.eth
-                </Text>
-              </XStack>
+              </YStack>
 
-              {ensAvailable !== null && (
+              {/* Username Input */}
+              <YStack marginBottom={12}>
+                <Text fontSize={12} color="rgba(255,255,255,0.7)" marginBottom={8} fontFamily="SpaceGrotesk_600SemiBold">
+                  Username (searchable by others)
+                </Text>
+                <Input
+                  size="$4"
+                  value={username}
+                  onChangeText={(text) => {
+                    setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+                    setUsernameAvailable(null);
+                    setUsernameError(null);
+                  }}
+                  placeholder="yourname"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  backgroundColor="rgba(255,255,255,0.05)"
+                  borderColor={usernameError ? 'rgba(239, 68, 68, 0.5)' : 'rgba(0,121,193,0.3)'}
+                  color="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  fontFamily="SpaceMono_400Regular"
+                  focusStyle={{ borderColor: '#0079c1' }}
+                />
+              </YStack>
+
+              {usernameError && (
                 <XStack
                   alignItems="center"
                   padding={10}
                   borderRadius={8}
                   gap={8}
                   marginBottom={12}
-                  backgroundColor={ensAvailable ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}
+                  backgroundColor="rgba(239, 68, 68, 0.15)"
                   borderWidth={1}
-                  borderColor={ensAvailable ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}
+                  borderColor="rgba(239, 68, 68, 0.3)"
                 >
-                  <Ionicons
-                    name={ensAvailable ? "checkmark-circle" : "close-circle"}
-                    size={20}
-                    color={ensAvailable ? "#10b981" : "#ef4444"}
-                  />
-                  <Text fontSize={13} fontWeight="700" color={ensAvailable ? "#10b981" : "#ef4444"} fontFamily="SpaceGrotesk_700Bold">
-                    {ensAvailable ? "✓ AVAILABLE" : "✗ TAKEN"}
+                  <Ionicons name="close-circle" size={20} color="#ef4444" />
+                  <Text fontSize={12} color="#ef4444" fontFamily="SpaceMono_400Regular" flex={1}>
+                    {usernameError}
                   </Text>
                 </XStack>
               )}
 
+              {usernameAvailable === true && (
+                <XStack
+                  alignItems="center"
+                  padding={10}
+                  borderRadius={8}
+                  gap={8}
+                  marginBottom={12}
+                  backgroundColor="rgba(16, 185, 129, 0.15)"
+                  borderWidth={1}
+                  borderColor="rgba(16, 185, 129, 0.3)"
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                  <Text fontSize={13} fontWeight="700" color="#10b981" fontFamily="SpaceGrotesk_700Bold">
+                    ✓ AVAILABLE
+                  </Text>
+                </XStack>
+              )}
+
+              {/* Bio Input */}
+              <YStack marginBottom={16}>
+                <Text fontSize={12} color="rgba(255,255,255,0.7)" marginBottom={8} fontFamily="SpaceGrotesk_600SemiBold">
+                  Bio (optional)
+                </Text>
+                <Input
+                  size="$4"
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="Tell us about yourself..."
+                  backgroundColor="rgba(255,255,255,0.05)"
+                  borderColor="rgba(0,121,193,0.3)"
+                  color="#FFFFFF"
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  fontFamily="SpaceMono_400Regular"
+                  focusStyle={{ borderColor: '#0079c1' }}
+                  multiline
+                  numberOfLines={2}
+                />
+              </YStack>
+
+              {/* Action Buttons */}
               <XStack gap={12} marginBottom={12}>
                 <Button
                   flex={1}
-                  onPress={handleCheckENS}
-                  disabled={isCheckingENS || !ensName.trim()}
-                  backgroundColor="#0079c1"
+                  onPress={handleCheckUsername}
+                  disabled={isCheckingUsername || !username.trim()}
+                  backgroundColor="rgba(0,121,193,0.2)"
                   borderWidth={1}
-                  borderColor="rgba(255,255,255,0.2)"
-                  icon={isCheckingENS ? undefined : <Ionicons name="search" size={16} color="#FFFFFF" />}
-                  pressStyle={{ backgroundColor: '#006ba8' }}
-                  opacity={isCheckingENS || !ensName.trim() ? 0.5 : 1}
+                  borderColor="#0079c1"
+                  icon={isCheckingUsername ? undefined : <Ionicons name="search" size={16} color="#0079c1" />}
+                  pressStyle={{ backgroundColor: 'rgba(0,121,193,0.3)' }}
+                  opacity={isCheckingUsername || !username.trim() ? 0.5 : 1}
                 >
-                  {isCheckingENS ? (
-                    <Spinner color="#FFFFFF" />
+                  {isCheckingUsername ? (
+                    <Spinner color="#0079c1" />
                   ) : (
-                    <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">CHECK</Text>
+                    <Text color="#0079c1" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">CHECK</Text>
                   )}
                 </Button>
 
-                {ensAvailable && (
-                  <Button
-                    flex={1}
-                    onPress={handleRegisterENS}
-                    disabled={isRegisteringENS}
-                    backgroundColor="#10b981"
-                    borderWidth={1}
-                    borderColor="rgba(255,255,255,0.2)"
-                    icon={isRegisteringENS ? undefined : <Ionicons name="sparkles" size={16} color="#FFFFFF" />}
-                    pressStyle={{ backgroundColor: '#059669' }}
-                  >
-                    {isRegisteringENS ? (
-                      <Spinner color="#FFFFFF" />
-                    ) : (
-                      <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">REGISTER</Text>
-                    )}
-                  </Button>
-                )}
+                <Button
+                  flex={1}
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  backgroundColor="#0079c1"
+                  borderWidth={1}
+                  borderColor="rgba(255,255,255,0.2)"
+                  icon={isSavingProfile ? undefined : <Ionicons name="save" size={16} color="#FFFFFF" />}
+                  pressStyle={{ backgroundColor: '#006ba8' }}
+                >
+                  {isSavingProfile ? (
+                    <Spinner color="#FFFFFF" />
+                  ) : (
+                    <Text color="#FFFFFF" fontWeight="600" fontFamily="SpaceGrotesk_600SemiBold">SAVE</Text>
+                  )}
+                </Button>
               </XStack>
 
               <XStack
@@ -419,7 +411,7 @@ export const ProfileScreen = () => {
               >
                 <Ionicons name="information-circle" size={18} color="#0079c1" />
                 <Text flex={1} fontSize={11} color="rgba(255,255,255,0.7)" lineHeight={16} fontFamily="SpaceMono_400Regular">
-                  Gas-free registration via smart wallet
+                  Username: 3-20 chars, lowercase, alphanumeric + underscore only
                 </Text>
               </XStack>
             </YStack>
