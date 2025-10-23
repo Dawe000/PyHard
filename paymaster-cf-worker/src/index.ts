@@ -63,6 +63,28 @@ interface CreateSubAccountResponse {
   error?: string;
 }
 
+interface ManagementFunctionRequest {
+  eoaAddress: string;
+  smartWalletAddress: string;
+  functionData: string;
+  authorizationSignature: {
+    chainId: string;
+    address: string;
+    nonce: string;
+    r: string;
+    s: string;
+    yParity: number;
+  };
+  eoaNonce: number;
+}
+
+interface ManagementFunctionResponse {
+  transactionHash: string;
+  success: boolean;
+  gasUsed?: string;
+  error?: string;
+}
+
 interface SendChildTransactionRequest {
   childEOA: string;
   smartWalletAddress: string;
@@ -140,6 +162,14 @@ export default {
         });
       }
 
+      // Management functions endpoint
+      if (url.pathname === '/management-function' && request.method === 'POST') {
+        const response = await handleManagementFunction(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
 
 
       // Health check
@@ -210,7 +240,7 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // Prepare SmartWallet function call data
     let executeData: `0x${string}`;
     
-    // Check if this is a child app request (has subWalletId) or main app request (has functionData)
+    // Check if this is a child app request (has subWalletId) or main app request
     if (sponsorRequest.subWalletId && sponsorRequest.recipientAddress && sponsorRequest.amount) {
       // Child app: Use executeSubWalletTransaction()
       console.log('👶 Child app request - using executeSubWalletTransaction()');
@@ -232,38 +262,51 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
         ]
       });
     } else {
-      // Main app: Use execute() with PYUSD transfer data
-      console.log('👤 Main app request - using execute() with PYUSD transfer');
-      executeData = encodeFunctionData({
-        abi: [{
-          type: 'function',
-          name: 'execute',
-          inputs: [
-            { type: 'address', name: 'target' },
-            { type: 'uint256', name: 'value' },
-            { type: 'bytes', name: 'data' }
+      // Check if this is a PYUSD transfer (has transfer function selector) or SmartWallet function
+      const functionData = sponsorRequest.functionData as `0x${string}`;
+      const transferSelector = '0xa9059cbb'; // transfer(address,uint256) function selector
+      
+      if (functionData.startsWith(transferSelector)) {
+        // PYUSD transfer: Use execute() with PYUSD contract
+        console.log('👤 Main app PYUSD transfer - using execute() with PYUSD contract');
+        executeData = encodeFunctionData({
+          abi: [{
+            type: 'function',
+            name: 'execute',
+            inputs: [
+              { type: 'address', name: 'target' },
+              { type: 'uint256', name: 'value' },
+              { type: 'bytes', name: 'data' }
+            ]
+          }],
+          functionName: 'execute',
+          args: [
+            env.PYUSD_ADDRESS as `0x${string}`, // PYUSD contract
+            0n, // No ETH value
+            functionData // PYUSD transfer data
           ]
-        }],
-        functionName: 'execute',
-        args: [
-          env.PYUSD_ADDRESS as `0x${string}`, // PYUSD contract
-          0n, // No ETH value
-          sponsorRequest.functionData as `0x${string}` // PYUSD transfer data
-        ]
-      });
+        });
+      } else {
+        // SmartWallet management function: Call directly
+        console.log('🔧 SmartWallet management function - calling directly');
+        executeData = functionData;
+      }
     }
 
     // Submit transaction TO USER'S EOA (not SmartWallet!) with EIP-7702 authorization
     console.log('🚀 Submitting transaction TO USER EOA with EIP-7702 authorization...');
     
+    // Parse the signature JSON string
+    const signature = JSON.parse(sponsorRequest.signature);
+    
     // Format the authorization list properly for viem
     const authorizationList = [{
-      chainId: BigInt(sponsorRequest.signature.chain_id),
-      address: sponsorRequest.signature.contract as `0x${string}`,
-      nonce: BigInt(sponsorRequest.signature.nonce),
-      r: sponsorRequest.signature.r as `0x${string}`,
-      s: sponsorRequest.signature.s as `0x${string}`,
-      yParity: sponsorRequest.signature.y_parity
+      chainId: Number(signature.chain_id),
+      address: signature.contract as `0x${string}`,
+      nonce: Number(signature.nonce),
+      r: signature.r as `0x${string}`,
+      s: signature.s as `0x${string}`,
+      yParity: Number(signature.y_parity)
     }];
     
     console.log('📝 Transaction details:', {
@@ -336,7 +379,7 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     console.log('🔍 Paymaster address:', relayerAccount.address);
     console.log('🔍 SmartWallet address:', sponsorRequest.smartWalletAddress);
     console.log('🔍 Execute data length:', executeData.length);
-    console.log('🔍 Nonce:', sponsorRequest.signature.nonce);
+    console.log('🔍 Nonce:', signature.nonce);
     console.log('🔍 Deadline:', sponsorRequest.deadline);
     
     // Check if paymaster is authorized in the contract
@@ -373,7 +416,7 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
       args: [
         sponsorRequest.smartWalletAddress as `0x${string}`, // SmartWallet
         executeData as `0x${string}`, // SmartWallet.execute() call data
-        BigInt(sponsorRequest.signature.nonce), // Nonce
+        BigInt(signature.nonce), // Nonce
         BigInt(sponsorRequest.deadline), // Deadline
         '0x' // Empty signature - paymaster is authorized
       ]
@@ -554,12 +597,12 @@ async function handleCreateSubAccount(request: Request, env: Env): Promise<Creat
     console.log('🚀 Step 1: Submitting EIP-7702 authorization...');
     
     const authorizationList = [{
-      chainId: BigInt(subAccountRequest.authorizationSignature.chainId),
+      chainId: Number(subAccountRequest.authorizationSignature.chainId),
       address: subAccountRequest.authorizationSignature.address as `0x${string}`,
-      nonce: BigInt(subAccountRequest.authorizationSignature.nonce),
+      nonce: Number(subAccountRequest.authorizationSignature.nonce),
       r: subAccountRequest.authorizationSignature.r as `0x${string}`,
       s: subAccountRequest.authorizationSignature.s as `0x${string}`,
-      yParity: subAccountRequest.authorizationSignature.yParity
+      yParity: Number(subAccountRequest.authorizationSignature.yParity)
     }];
 
     const authHash = await walletClient.sendTransaction({
@@ -706,7 +749,7 @@ async function handleSendChildTransaction(
       to: childTransactionRequest.childEOA as `0x${string}`, // TO CHILD'S EOA (now delegated)
       data: executeSubWalletTransactionData,
       value: 0n,
-      nonce: currentNonce + 1n
+      nonce: currentNonce + 1
     });
 
     console.log('✅ Child transaction submitted:', transactionHash);
@@ -719,6 +762,104 @@ async function handleSendChildTransaction(
   } catch (error) {
     console.error('❌ Error processing child transaction:', error);
     return {
+      transactionHash: '',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function handleManagementFunction(request: Request, env: Env): Promise<ManagementFunctionResponse> {
+  try {
+    const managementRequest: ManagementFunctionRequest = await request.json();
+    
+    console.log(`🔧 Executing management function for: ${managementRequest.eoaAddress.slice(0, 6)}...${managementRequest.eoaAddress.slice(-4)}`);
+
+    // 1. Create clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // 2. Step 1: EIP-7702 Authorization
+    console.log('🚀 Step 1: Submitting EIP-7702 authorization...');
+    
+    const authorizationList = [{
+      chainId: Number(managementRequest.authorizationSignature.chainId),
+      address: managementRequest.authorizationSignature.address as `0x${string}`,
+      nonce: Number(managementRequest.authorizationSignature.nonce),
+      r: managementRequest.authorizationSignature.r as `0x${string}`,
+      s: managementRequest.authorizationSignature.s as `0x${string}`,
+      yParity: Number(managementRequest.authorizationSignature.yParity)
+    }];
+
+    const authHash = await walletClient.sendTransaction({
+      to: managementRequest.eoaAddress as `0x${string}`,
+      data: '0x',
+      authorizationList: authorizationList,
+      value: 0n
+    });
+
+    console.log('✅ EIP-7702 authorization submitted:', authHash);
+    
+    // Wait for authorization
+    await publicClient.waitForTransactionReceipt({ hash: authHash });
+    console.log('✅ EIP-7702 authorization confirmed');
+
+    // 3. Step 2: Execute management function (wrap in EOADelegation.executeOnSmartWallet)
+    console.log('🚀 Step 2: Executing management function...');
+    
+    // Create EOADelegation.executeOnSmartWallet call data (same pattern as sub-account creation)
+    const executeOnSmartWalletData = encodeFunctionData({
+      abi: [{
+        "inputs": [
+          {"name": "smartWallet", "type": "address"},
+          {"name": "data", "type": "bytes"},
+          {"name": "nonce", "type": "uint256"},
+          {"name": "deadline", "type": "uint256"},
+          {"name": "signature", "type": "bytes"}
+        ],
+        "name": "executeOnSmartWallet",
+        "outputs": [{"name": "", "type": "bytes"}],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }],
+      functionName: "executeOnSmartWallet",
+      args: [
+        managementRequest.smartWalletAddress as `0x${string}`,
+        managementRequest.functionData as `0x${string}`,
+        BigInt(managementRequest.eoaNonce),
+        BigInt(Math.floor(Date.now() / 1000 + 600)), // 10 minutes from now
+        "0x" // Empty signature - paymaster is authorized
+      ]
+    });
+    
+    const hash = await walletClient.sendTransaction({
+      to: managementRequest.eoaAddress as `0x${string}`, // TO EOA (now delegated)
+      data: executeOnSmartWalletData,
+      value: 0n
+      // Don't specify nonce - let viem handle it automatically
+    });
+
+    console.log('✅ Management function executed:', hash);
+
+    return {
+      transactionHash: hash,
+      success: true,
+      gasUsed: '0'
+    };
+
+  } catch (error) {
+    console.error('❌ Error processing management function:', error);
+    return {
+      transactionHash: '',
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     };

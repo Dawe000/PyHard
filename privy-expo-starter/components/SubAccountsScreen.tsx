@@ -12,7 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
-import { usePrivy, getUserEmbeddedEthereumWallet } from '@privy-io/expo';
+import { usePrivy, getUserEmbeddedEthereumWallet, useAuthorizationSignature } from '@privy-io/expo';
 import { getOrCreateSmartWallet } from '@/services/smartWallet';
 import { createPublicClient, http, parseAbi } from 'viem';
 import { arbitrumSepolia } from 'viem/chains';
@@ -28,12 +28,19 @@ interface ChildAccount {
 export const SubAccountsScreen = () => {
   const { user } = usePrivy();
   const account = getUserEmbeddedEthereumWallet(user);
+  const { generateAuthorizationSignature } = useAuthorizationSignature();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<ChildAccount | null>(null);
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<'saver' | 'sub_account'>('saver');
+  const [newLimit, setNewLimit] = useState('');
   const [subAccounts, setSubAccounts] = useState<ChildAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Fetch child accounts from smart contract
   const fetchChildAccounts = async () => {
@@ -213,6 +220,169 @@ export const SubAccountsScreen = () => {
     Alert.alert("Success", "Sub-account created successfully!");
   };
 
+  const handleManageAccount = (childAccount: ChildAccount) => {
+    setSelectedAccount(childAccount);
+    setShowManageModal(true);
+  };
+
+  const handleEditLimit = () => {
+    if (!selectedAccount) return;
+    setNewLimit(((selectedAccount as any).limit_display || '0.00').toString());
+    setShowEditModal(true);
+    setShowManageModal(false);
+  };
+
+  const handleDeleteAccount = () => {
+    if (!selectedAccount) return;
+    setShowDeleteModal(true);
+    setShowManageModal(false);
+  };
+
+  const handleUpdateLimit = async () => {
+    if (!selectedAccount || !newLimit.trim()) {
+      Alert.alert("Error", "Please enter a valid limit");
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      
+      // Get Privy access token
+      const { createPrivyClient } = await import('@privy-io/expo');
+      const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
+      const accessToken = await privyClient.getAccessToken();
+      
+      if (!accessToken) {
+        throw new Error("Failed to get Privy access token.");
+      }
+
+      // Get smart wallet address
+      const smartWalletInfo = await getOrCreateSmartWallet(account!.address, accessToken);
+      const smartWalletAddress = smartWalletInfo.address;
+
+      // Convert limit to wei (PYUSD has 6 decimals)
+      const newLimitWei = Math.floor(parseFloat(newLimit) * 1000000);
+      
+      console.log('🔄 Updating sub-wallet limit on-chain:', {
+        subWalletId: selectedAccount.sub_wallet_id,
+        newLimit: newLimitWei,
+        smartWalletAddress
+      });
+
+      // Encode the updateSubWalletLimit function call using viem
+      const { encodeFunctionData } = await import('viem');
+      const functionData = encodeFunctionData({
+        abi: [{
+          type: 'function',
+          name: 'updateSubWalletLimit',
+          inputs: [
+            { type: 'uint256', name: 'subWalletId' },
+            { type: 'uint256', name: 'newLimit' }
+          ]
+        }],
+        functionName: 'updateSubWalletLimit',
+        args: [BigInt(selectedAccount.sub_wallet_id), BigInt(newLimitWei)]
+      });
+
+      // Execute management function using the service (same pattern as sub-account creation)
+      const { executeManagementFunction } = await import('../services/managementService');
+      
+      const result = await executeManagementFunction(
+        account!.address,
+        smartWalletAddress,
+        functionData,
+        generateAuthorizationSignature,
+        account!.id
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Transaction failed');
+      }
+
+      Alert.alert("Success", `Limit updated to ${newLimit} PYUSD\nTransaction: ${result.transactionHash}`);
+      setShowEditModal(false);
+      setNewLimit('');
+      setSelectedAccount(null);
+      
+      // Refresh the data
+      await fetchChildAccounts();
+      
+    } catch (error) {
+      console.error('❌ Error updating limit:', error);
+      Alert.alert("Error", `Failed to update limit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedAccount) return;
+
+    try {
+      setActionLoading(true);
+      
+      // Get Privy access token
+      const { createPrivyClient } = await import('@privy-io/expo');
+      const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
+      const accessToken = await privyClient.getAccessToken();
+      
+      if (!accessToken) {
+        throw new Error("Failed to get Privy access token.");
+      }
+
+      // Get smart wallet address
+      const smartWalletInfo = await getOrCreateSmartWallet(account!.address, accessToken);
+      const smartWalletAddress = smartWalletInfo.address;
+
+      console.log('🗑️ Deleting sub-wallet on-chain:', {
+        subWalletId: selectedAccount.sub_wallet_id,
+        smartWalletAddress
+      });
+
+      // Encode the revokeSubWallet function call using viem
+      const { encodeFunctionData } = await import('viem');
+      const functionData = encodeFunctionData({
+        abi: [{
+          type: 'function',
+          name: 'revokeSubWallet',
+          inputs: [
+            { type: 'uint256', name: 'subWalletId' }
+          ]
+        }],
+        functionName: 'revokeSubWallet',
+        args: [BigInt(selectedAccount.sub_wallet_id)]
+      });
+
+      // Execute management function using the service (same pattern as sub-account creation)
+      const { executeManagementFunction } = await import('../services/managementService');
+      
+      const result = await executeManagementFunction(
+        account!.address,
+        smartWalletAddress,
+        functionData,
+        generateAuthorizationSignature,
+        account!.id
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Transaction failed');
+      }
+
+      Alert.alert("Success", `Sub-account deleted successfully\nTransaction: ${result.transactionHash}`);
+      setShowDeleteModal(false);
+      setSelectedAccount(null);
+      
+      // Refresh the data
+      await fetchChildAccounts();
+      
+    } catch (error) {
+      console.error('❌ Error deleting sub-account:', error);
+      Alert.alert("Error", `Failed to delete sub-account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const renderSubAccount = (childAccount: ChildAccount) => (
     <TouchableOpacity
       key={childAccount.sub_wallet_id}
@@ -314,7 +484,7 @@ export const SubAccountsScreen = () => {
           <XStack gap={8} justifyContent="space-between">
             <TouchableOpacity
               style={{ flex: 1 }}
-              onPress={() => Alert.alert("Coming Soon", "Manage feature coming soon!")}
+              onPress={() => handleManageAccount(childAccount)}
             >
               <YStack backgroundColor="rgba(0,121,193,0.15)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
                 <XStack alignItems="center" gap={6}>
@@ -542,6 +712,246 @@ export const SubAccountsScreen = () => {
                   <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
                     CREATE
                   </Text>
+                </YStack>
+              </TouchableOpacity>
+            </XStack>
+          </YStack>
+        </YStack>
+      </Modal>
+
+      {/* Manage Modal */}
+      <Modal
+        visible={showManageModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowManageModal(false)}
+      >
+        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
+          <YStack
+            backgroundColor="#0a0e27"
+            borderTopLeftRadius={20}
+            borderTopRightRadius={20}
+            paddingTop={20}
+          >
+            <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                MANAGE SUB-ACCOUNT
+              </Text>
+              <TouchableOpacity onPress={() => setShowManageModal(false)}>
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            </XStack>
+
+            {selectedAccount && (
+              <YStack paddingHorizontal={20} marginBottom={20}>
+                <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8}>
+                  {selectedAccount.child_name}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular" marginBottom={16}>
+                  {selectedAccount.child_eoa}
+                </Text>
+                <Text fontSize={14} color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_400Regular">
+                  Current Limit: {(selectedAccount as any).limit_display || '0.00'} PYUSD
+                </Text>
+              </YStack>
+            )}
+
+            <YStack paddingHorizontal={20} paddingBottom={20} gap={12}>
+              <TouchableOpacity
+                onPress={handleEditLimit}
+                disabled={actionLoading}
+              >
+                <YStack backgroundColor="rgba(0,121,193,0.15)" paddingVertical={16} paddingHorizontal={20} borderRadius={12} alignItems="center">
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="pencil-outline" size={20} color="#0079c1" />
+                    <Text fontSize={16} fontWeight="600" color="#0079c1" fontFamily="SpaceGrotesk_600SemiBold">
+                      EDIT ALLOWANCE
+                    </Text>
+                  </XStack>
+                </YStack>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleDeleteAccount}
+                disabled={actionLoading}
+              >
+                <YStack backgroundColor="rgba(255,59,48,0.15)" paddingVertical={16} paddingHorizontal={20} borderRadius={12} alignItems="center">
+                  <XStack alignItems="center" gap={8}>
+                    <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                    <Text fontSize={16} fontWeight="600" color="#FF3B30" fontFamily="SpaceGrotesk_600SemiBold">
+                      DELETE SUB-ACCOUNT
+                    </Text>
+                  </XStack>
+                </YStack>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setShowManageModal(false)}
+                disabled={actionLoading}
+              >
+                <YStack paddingVertical={16} alignItems="center">
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_600SemiBold">
+                    CANCEL
+                  </Text>
+                </YStack>
+              </TouchableOpacity>
+            </YStack>
+          </YStack>
+        </YStack>
+      </Modal>
+
+      {/* Edit Limit Modal */}
+      <Modal
+        visible={showEditModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
+          <YStack
+            backgroundColor="#0a0e27"
+            borderTopLeftRadius={20}
+            borderTopRightRadius={20}
+            paddingTop={20}
+          >
+            <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                EDIT ALLOWANCE
+              </Text>
+              <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            </XStack>
+
+            <YStack paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
+                NEW MONTHLY LIMIT (PYUSD)
+              </Text>
+              <TextInput
+                style={styles.textInput}
+                value={newLimit}
+                onChangeText={setNewLimit}
+                placeholder="Enter new limit"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                keyboardType="numeric"
+              />
+            </YStack>
+
+            <XStack paddingHorizontal={20} paddingBottom={20} gap={8}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => setShowEditModal(false)}
+                disabled={actionLoading}
+              >
+                <YStack paddingVertical={16} alignItems="center">
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_600SemiBold">
+                    CANCEL
+                  </Text>
+                </YStack>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={handleUpdateLimit}
+                disabled={actionLoading}
+              >
+                <YStack backgroundColor="#0079c1" paddingVertical={16} alignItems="center" borderRadius={12}>
+                  {actionLoading ? (
+                    <XStack alignItems="center" gap={8}>
+                      <Ionicons name="hourglass-outline" size={16} color="#FFFFFF" />
+                      <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                        UPDATING...
+                      </Text>
+                    </XStack>
+                  ) : (
+                    <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                      UPDATE
+                    </Text>
+                  )}
+                </YStack>
+              </TouchableOpacity>
+            </XStack>
+          </YStack>
+        </YStack>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="center" alignItems="center" paddingHorizontal={20}>
+          <YStack
+            backgroundColor="#0a0e27"
+            borderRadius={20}
+            padding={24}
+            width="100%"
+            borderWidth={1}
+            borderColor="rgba(255,59,48,0.2)"
+          >
+            <XStack alignItems="center" gap={12} marginBottom={16}>
+              <YStack
+                width={48}
+                height={48}
+                borderRadius={24}
+                backgroundColor="rgba(255,59,48,0.15)"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="warning" size={24} color="#FF3B30" />
+              </YStack>
+              <YStack flex={1}>
+                <Text fontSize={18} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold" marginBottom={4}>
+                  DELETE SUB-ACCOUNT
+                </Text>
+                <Text fontSize={14} color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_400Regular">
+                  This action cannot be undone
+                </Text>
+              </YStack>
+            </XStack>
+
+            {selectedAccount && (
+              <YStack marginBottom={20}>
+                <Text fontSize={14} color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_400Regular" marginBottom={8}>
+                  Sub-Account: {selectedAccount.child_name}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                  {selectedAccount.child_eoa}
+                </Text>
+              </YStack>
+            )}
+
+            <XStack gap={12}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={actionLoading}
+              >
+                <YStack paddingVertical={16} alignItems="center" borderRadius={12} borderWidth={1} borderColor="rgba(255,255,255,0.2)">
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold">
+                    CANCEL
+                  </Text>
+                </YStack>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={handleConfirmDelete}
+                disabled={actionLoading}
+              >
+                <YStack backgroundColor="#FF3B30" paddingVertical={16} alignItems="center" borderRadius={12}>
+                  {actionLoading ? (
+                    <XStack alignItems="center" gap={8}>
+                      <Ionicons name="hourglass-outline" size={16} color="#FFFFFF" />
+                      <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                        DELETING...
+                      </Text>
+                    </XStack>
+                  ) : (
+                    <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                      DELETE
+                    </Text>
+                  )}
                 </YStack>
               </TouchableOpacity>
             </XStack>
