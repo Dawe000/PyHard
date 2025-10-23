@@ -33,9 +33,11 @@ export const MainNavigation = () => {
 
   const handleQRScanned = (qrData: any) => {
     setScannedQRData(qrData);
-    // Check if it's a sub-account request or payment request
+    // Check if it's a sub-account request, subscription request, or payment request
     if (qrData.type === 'subaccount_request') {
       setActiveTab('subaccount-creation');
+    } else if (qrData.type === 'subscription_request') {
+      setActiveTab('subscription-confirmation' as any);
     } else {
       setActiveTab('payment-confirmation' as any);
     }
@@ -72,6 +74,17 @@ export const MainNavigation = () => {
       if (scannedQRData.type === 'subaccount_request') {
         return (
           <SubAccountCreationScreen
+            qrData={scannedQRData}
+            onClose={handleSubAccountCancel}
+            onSuccess={handleSubAccountComplete}
+          />
+        );
+      }
+      // Check if it's a subscription request
+      if (scannedQRData.type === 'subscription_request') {
+        const SubscriptionConfirmationScreen = require('./SubscriptionConfirmationScreen').SubscriptionConfirmationScreen;
+        return (
+          <SubscriptionConfirmationScreen
             qrData={scannedQRData}
             onClose={handleSubAccountCancel}
             onSuccess={handleSubAccountComplete}

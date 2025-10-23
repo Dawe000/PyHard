@@ -30,7 +30,9 @@ interface TransactionsScreenProps {
 }
 
 export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenProps = {}) => {
+  const [activeTab, setActiveTab] = useState<'transactions' | 'subscriptions'>('transactions');
   const [transactions, setTransactions] = useState<BlockscoutTokenTransfer[]>([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
@@ -134,6 +136,13 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
     }
   }, [smartWalletAddress, loadTransactions]);
 
+  // Load subscriptions when switching to subscriptions tab
+  useEffect(() => {
+    if (activeTab === 'subscriptions' && smartWalletAddress) {
+      loadSubscriptions();
+    }
+  }, [activeTab, smartWalletAddress]);
+
   // Open modal if initialTransaction is provided
   useEffect(() => {
     if (initialTransaction) {
@@ -157,7 +166,39 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
   }, [loadTransactions]);
 
   const handleRefresh = () => {
-    loadTransactions(true);
+    if (activeTab === 'transactions') {
+      loadTransactions(true);
+    } else {
+      loadSubscriptions(true);
+    }
+  };
+
+  // Load subscriptions
+  const loadSubscriptions = async (isRefresh: boolean = false) => {
+    if (!smartWalletAddress) {
+      return;
+    }
+
+    console.log('🔍 Loading subscriptions for SmartWallet:', smartWalletAddress);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(`https://paymaster-cf-worker.dawid-pisarczyk.workers.dev/subscriptions/${smartWalletAddress}`);
+      const data = await response.json();
+      
+      if (data.subscriptions) {
+        setSubscriptions(data.subscriptions);
+        console.log(`📊 Loaded ${data.subscriptions.length} subscriptions`);
+      } else {
+        setSubscriptions([]);
+        console.log('📊 No subscriptions found');
+      }
+    } catch (error) {
+      console.error('❌ Error loading subscriptions:', error);
+      setSubscriptions([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const openTransactionDetails = (transaction: BlockscoutTokenTransfer) => {
@@ -263,6 +304,69 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
     );
   };
 
+  const renderSubscription = (subscription: any) => {
+    const amount = parseFloat(subscription.amountPerInterval) / 1000000; // Convert to PYUSD
+    const lastPayment = new Date(parseInt(subscription.lastPayment) * 1000);
+    const nextPayment = new Date((parseInt(subscription.lastPayment) + parseInt(subscription.interval)) * 1000);
+    
+    const formatInterval = (seconds: number) => {
+      const days = seconds / 86400;
+      if (seconds === 86400) return "Daily";
+      if (seconds === 604800) return "Weekly";
+      if (seconds === 2592000) return "Monthly";
+      return `Every ${days.toFixed(1)} days`;
+    };
+
+    return (
+      <LinearGradient
+        key={`${subscription.smartWallet}-${subscription.subscriptionId}`}
+        colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ borderRadius: 12, padding: 1, marginBottom: 12 }}
+      >
+        <YStack
+          backgroundColor="rgba(10,14,39,0.6)"
+          borderRadius={11}
+          padding={16}
+          borderWidth={1}
+          borderColor="rgba(0,121,193,0.2)"
+        >
+          <XStack justifyContent="space-between" alignItems="center">
+            <XStack alignItems="center" gap={12} flex={1}>
+              <YStack
+                width={40}
+                height={40}
+                borderRadius={20}
+                backgroundColor="#0079c120"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <Ionicons name="repeat" size={20} color="#0079c1" />
+              </YStack>
+              <YStack flex={1}>
+                <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                  Subscription #{subscription.subscriptionId}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
+                  {formatInterval(parseInt(subscription.interval))} • {subscription.vendor.slice(0, 6)}...{subscription.vendor.slice(-4)}
+                </Text>
+              </YStack>
+            </XStack>
+            <YStack alignItems="flex-end">
+              <Text fontSize={16} fontWeight="700" color="#0079c1" fontFamily="SpaceGrotesk_700Bold">
+                ${amount.toFixed(2)}
+              </Text>
+              <Text fontSize={12} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_400Regular">
+                Next: {nextPayment.toLocaleDateString()}
+              </Text>
+            </YStack>
+          </XStack>
+        </YStack>
+      </LinearGradient>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
@@ -273,6 +377,40 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
           </Text>
           <TouchableOpacity onPress={handleRefresh} disabled={isRefreshing}>
             <Ionicons name="refresh-outline" size={24} color={isRefreshing ? "rgba(0,121,193,0.5)" : "#0079c1"} />
+          </TouchableOpacity>
+        </XStack>
+
+        {/* Segmented Control */}
+        <XStack backgroundColor="rgba(255,255,255,0.1)" borderRadius={12} padding={4} marginBottom={16}>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: activeTab === 'transactions' ? '#0079c1' : 'transparent',
+              alignItems: 'center'
+            }}
+            onPress={() => setActiveTab('transactions')}
+          >
+            <Text fontSize={14} fontWeight="600" color={activeTab === 'transactions' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} fontFamily="SpaceGrotesk_600SemiBold">
+              TRANSACTIONS
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={{
+              flex: 1,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 8,
+              backgroundColor: activeTab === 'subscriptions' ? '#0079c1' : 'transparent',
+              alignItems: 'center'
+            }}
+            onPress={() => setActiveTab('subscriptions')}
+          >
+            <Text fontSize={14} fontWeight="600" color={activeTab === 'subscriptions' ? '#FFFFFF' : 'rgba(255,255,255,0.7)'} fontFamily="SpaceGrotesk_600SemiBold">
+              SUBSCRIPTIONS
+            </Text>
           </TouchableOpacity>
         </XStack>
 
@@ -335,18 +473,34 @@ export const TransactionsScreen = ({ initialTransaction }: TransactionsScreenPro
           </YStack>
         ) : (
           <YStack>
-            {transactions.length > 0 ? (
-              transactions.map(renderTransaction)
+            {activeTab === 'transactions' ? (
+              transactions.length > 0 ? (
+                transactions.map(renderTransaction)
+              ) : (
+                <YStack alignItems="center" paddingVertical={48}>
+                  <Ionicons name="receipt-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                    No Transactions Yet
+                  </Text>
+                  <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                    &gt; Your PYUSD transfers will appear here
+                  </Text>
+                </YStack>
+              )
             ) : (
-              <YStack alignItems="center" paddingVertical={48}>
-                <Ionicons name="receipt-outline" size={48} color="rgba(255,255,255,0.3)" />
-                <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
-                  No Transactions Yet
-                </Text>
-                <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
-                  &gt; Your PYUSD transfers will appear here
-                </Text>
-              </YStack>
+              subscriptions.length > 0 ? (
+                subscriptions.map(renderSubscription)
+              ) : (
+                <YStack alignItems="center" paddingVertical={48}>
+                  <Ionicons name="repeat-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={16} marginBottom={8}>
+                    No Subscriptions Yet
+                  </Text>
+                  <Text fontSize={13} color="rgba(255,255,255,0.4)" fontFamily="SpaceMono_400Regular" textAlign="center">
+                    &gt; Your active subscriptions will appear here
+                  </Text>
+                </YStack>
+              )
             )}
           </YStack>
         )}

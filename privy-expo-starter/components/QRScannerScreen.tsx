@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Ionicons } from '@expo/vector-icons';
-import { decodeQRData, isPaymentRequest, isSubAccountRequest, QRCodeData } from '@/utils/qrCodeUtils';
+import { decodeQRData, isPaymentRequest, isSubAccountRequest, isSubscriptionRequest, QRCodeData } from '@/utils/qrCodeUtils';
 
 interface QRScannerScreenProps {
   onQRScanned: (qrData: QRCodeData) => void;
@@ -39,7 +39,7 @@ export const QRScannerScreen: React.FC<QRScannerScreenProps> = ({ onQRScanned, o
         return;
       }
 
-      if (!isPaymentRequest(qrData) && !isSubAccountRequest(qrData)) {
+      if (!isPaymentRequest(qrData) && !isSubAccountRequest(qrData) && !isSubscriptionRequest(qrData)) {
         Alert.alert(
           'Invalid QR Code',
           'This QR code is not a valid request.',

@@ -14,10 +14,18 @@ export interface SubAccountRequestData {
   requestId: string;
 }
 
+export interface SubscriptionRequestData {
+  vendorAddress: string;
+  amount: string; // PYUSD display units
+  interval: string; // seconds
+  timestamp: number;
+  requestId: string;
+}
+
 export interface QRCodeData {
   version: string;
   type: string;
-  data: PaymentRequestData | SubAccountRequestData;
+  data: PaymentRequestData | SubAccountRequestData | SubscriptionRequestData;
 }
 
 /**
@@ -59,6 +67,27 @@ export function createSubAccountRequestQR(
 }
 
 /**
+ * Create a subscription request QR code data structure
+ */
+export function createSubscriptionRequestQR(
+  vendorAddress: string,
+  amount: string,
+  interval: string
+): QRCodeData {
+  return {
+    version: "1.0",
+    type: "subscription_request",
+    data: {
+      vendorAddress,
+      amount,
+      interval,
+      timestamp: Date.now(),
+      requestId: uuidv4()
+    }
+  };
+}
+
+/**
  * Encode QR code data to JSON string
  */
 export function encodeQRData(qrData: QRCodeData): string {
@@ -93,6 +122,14 @@ export function decodeQRData(qrString: string): QRCodeData | null {
           parsed.data.childName) {
         return parsed as QRCodeData;
       }
+      
+      // Check if it's a subscription request
+      if (parsed.type === "subscription_request" &&
+          parsed.data.vendorAddress &&
+          parsed.data.amount &&
+          parsed.data.interval) {
+        return parsed as QRCodeData;
+      }
     }
     
     return null;
@@ -114,6 +151,31 @@ export function isPaymentRequest(qrData: QRCodeData): boolean {
  */
 export function isSubAccountRequest(qrData: QRCodeData): boolean {
   return qrData.type === "subaccount_request" && qrData.version === "1.0";
+}
+
+/**
+ * Validate if QR code is a subscription request
+ */
+export function isSubscriptionRequest(qrData: QRCodeData): boolean {
+  return qrData.type === "subscription_request" && qrData.version === "1.0";
+}
+
+/**
+ * Format interval for display
+ */
+export function formatInterval(seconds: number): string {
+  const days = seconds / 86400;
+  
+  if (seconds === 86400) return "Daily (24 hours)";
+  if (seconds === 604800) return "Weekly (7 days)";
+  if (seconds === 2592000) return "Monthly (30 days)";
+  
+  if (days < 1) {
+    const hours = seconds / 3600;
+    return `Every ${hours.toFixed(1)} hours`;
+  }
+  
+  return `Every ${days.toFixed(1)} days`;
 }
 
 /**

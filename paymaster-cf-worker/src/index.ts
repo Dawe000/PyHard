@@ -1,6 +1,6 @@
 // EIP-7702 Gas Sponsorship Worker
 
-import { createPublicClient, createWalletClient, http, encodeFunctionData } from 'viem';
+import { createPublicClient, createWalletClient, http, encodeFunctionData, keccak256, toHex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrumSepolia } from 'viem/chains';
 
@@ -82,6 +82,51 @@ interface ManagementFunctionResponse {
   transactionHash: string;
   success: boolean;
   gasUsed?: string;
+  error?: string;
+}
+
+interface CreateSubscriptionRequest {
+  eoaAddress: string;
+  smartWalletAddress: string;
+  vendorAddress: string;
+  amount: string; // PYUSD display units
+  interval: string; // seconds as string
+  authorizationSignature: {
+    chainId: string;
+    address: string;
+    nonce: string;
+    r: string;
+    s: string;
+    yParity: number;
+  };
+  eoaNonce: number;
+}
+
+interface CreateSubscriptionResponse {
+  transactionHash: string;
+  success: boolean;
+  subscriptionId?: number;
+  error?: string;
+}
+
+interface CancelSubscriptionRequest {
+  eoaAddress: string;
+  smartWalletAddress: string;
+  subscriptionId: number;
+  authorizationSignature: {
+    chainId: string;
+    address: string;
+    nonce: string;
+    r: string;
+    s: string;
+    yParity: number;
+  };
+  eoaNonce: number;
+}
+
+interface CancelSubscriptionResponse {
+  transactionHash: string;
+  success: boolean;
   error?: string;
 }
 
@@ -170,7 +215,28 @@ export default {
         });
       }
 
+      // Subscription endpoints
+      if (url.pathname === '/create-subscription' && request.method === 'POST') {
+        const response = await handleCreateSubscription(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
+      if (url.pathname === '/cancel-subscription' && request.method === 'POST') {
+        const response = await handleCancelSubscription(request, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+
+      if (url.pathname.startsWith('/subscriptions/') && request.method === 'GET') {
+        const smartWalletAddress = url.pathname.split('/')[2];
+        const response = await handleGetSubscriptions(smartWalletAddress, env);
+        return new Response(JSON.stringify(response), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
       // Health check
       if (url.pathname === '/health' && request.method === 'GET') {
@@ -864,5 +930,315 @@ async function handleManagementFunction(request: Request, env: Env): Promise<Man
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'
     };
+  }
+}
+
+// Subscription handlers
+async function handleCreateSubscription(request: Request, env: Env): Promise<CreateSubscriptionResponse> {
+  try {
+    const subRequest: CreateSubscriptionRequest = await request.json();
+    
+    console.log(`📝 Creating subscription for: ${subRequest.eoaAddress.slice(0, 6)}...${subRequest.eoaAddress.slice(-4)} to vendor ${subRequest.vendorAddress.slice(0, 6)}...${subRequest.vendorAddress.slice(-4)}`);
+
+    // Create clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // Step 1: EIP-7702 Authorization
+    console.log('🚀 Step 1: Submitting EIP-7702 authorization...');
+    
+    const authorizationList = [{
+      chainId: Number(subRequest.authorizationSignature.chainId),
+      address: subRequest.authorizationSignature.address as `0x${string}`,
+      nonce: Number(subRequest.authorizationSignature.nonce),
+      r: subRequest.authorizationSignature.r as `0x${string}`,
+      s: subRequest.authorizationSignature.s as `0x${string}`,
+      yParity: Number(subRequest.authorizationSignature.yParity)
+    }];
+
+    const authHash = await walletClient.sendTransaction({
+      to: subRequest.eoaAddress as `0x${string}`,
+      data: '0x',
+      authorizationList: authorizationList,
+      value: 0n
+    });
+
+    console.log('✅ EIP-7702 authorization submitted:', authHash);
+    
+    // Wait for authorization
+    await publicClient.waitForTransactionReceipt({ hash: authHash });
+    console.log('✅ EIP-7702 authorization confirmed');
+
+    // Step 2: Encode createSubscription() call
+    console.log('🚀 Step 2: Creating subscription...');
+    
+    const amountWei = BigInt(Math.floor(parseFloat(subRequest.amount) * 1000000)); // Convert PYUSD to wei (6 decimals)
+    const intervalSeconds = BigInt(subRequest.interval);
+    
+    const createSubData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'createSubscription',
+        inputs: [
+          { type: 'address', name: 'vendor' },
+          { type: 'uint256', name: 'amount' },
+          { type: 'uint256', name: 'interval' }
+        ],
+        outputs: [{ type: 'uint256' }]
+      }],
+      functionName: 'createSubscription',
+      args: [subRequest.vendorAddress as `0x${string}`, amountWei, intervalSeconds]
+    });
+    
+    // Wrap in executeOnSmartWallet()
+    const executeData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'executeOnSmartWallet',
+        inputs: [
+          { type: 'address', name: 'smartWallet' },
+          { type: 'bytes', name: 'data' },
+          { type: 'uint256', name: 'nonce' },
+          { type: 'uint256', name: 'deadline' },
+          { type: 'bytes', name: 'signature' }
+        ],
+        outputs: [{ type: 'bytes' }]
+      }],
+      functionName: 'executeOnSmartWallet',
+      args: [
+        subRequest.smartWalletAddress as `0x${string}`,
+        createSubData,
+        BigInt(subRequest.eoaNonce),
+        BigInt(Math.floor(Date.now() / 1000 + 600)), // 10 minutes from now
+        '0x' // Empty signature - paymaster is authorized
+      ]
+    });
+    
+    // Submit transaction
+    const hash = await walletClient.sendTransaction({
+      to: subRequest.eoaAddress as `0x${string}`,
+      data: executeData,
+      value: 0n
+    });
+
+    console.log('✅ Subscription creation submitted:', hash);
+
+    // Wait for receipt and parse subscription ID from logs
+    const receipt = await publicClient.waitForTransactionReceipt({ hash });
+    let subscriptionId = 0;
+    
+    // Parse SubscriptionCreated event
+    const SUBSCRIPTION_CREATED_EVENT = keccak256(toHex('SubscriptionCreated(uint256,address,uint256,uint256)'));
+    
+    for (const log of receipt.logs) {
+      if (log.topics[0] === SUBSCRIPTION_CREATED_EVENT) {
+        subscriptionId = parseInt(log.topics[1], 16);
+        break;
+      }
+    }
+    
+    console.log('✅ Subscription created with ID:', subscriptionId);
+
+    return {
+      transactionHash: hash,
+      success: true,
+      subscriptionId
+    };
+
+  } catch (error) {
+    console.error('❌ Error creating subscription:', error);
+    return {
+      transactionHash: '',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function handleCancelSubscription(request: Request, env: Env): Promise<CancelSubscriptionResponse> {
+  try {
+    const cancelRequest: CancelSubscriptionRequest = await request.json();
+    
+    console.log(`📝 Cancelling subscription ${cancelRequest.subscriptionId} for: ${cancelRequest.eoaAddress.slice(0, 6)}...${cancelRequest.eoaAddress.slice(-4)}`);
+
+    // Create clients
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    const relayerAccount = privateKeyToAccount(env.PAYMASTER_PRIVATE_KEY as `0x${string}`);
+    const walletClient = createWalletClient({
+      account: relayerAccount,
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // Step 1: EIP-7702 Authorization
+    console.log('🚀 Step 1: Submitting EIP-7702 authorization...');
+    
+    const authorizationList = [{
+      chainId: Number(cancelRequest.authorizationSignature.chainId),
+      address: cancelRequest.authorizationSignature.address as `0x${string}`,
+      nonce: Number(cancelRequest.authorizationSignature.nonce),
+      r: cancelRequest.authorizationSignature.r as `0x${string}`,
+      s: cancelRequest.authorizationSignature.s as `0x${string}`,
+      yParity: Number(cancelRequest.authorizationSignature.yParity)
+    }];
+
+    const authHash = await walletClient.sendTransaction({
+      to: cancelRequest.eoaAddress as `0x${string}`,
+      data: '0x',
+      authorizationList: authorizationList,
+      value: 0n
+    });
+
+    console.log('✅ EIP-7702 authorization submitted:', authHash);
+    
+    // Wait for authorization
+    await publicClient.waitForTransactionReceipt({ hash: authHash });
+    console.log('✅ EIP-7702 authorization confirmed');
+
+    // Step 2: Encode cancelSubscription() call
+    console.log('🚀 Step 2: Cancelling subscription...');
+    
+    const cancelSubData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'cancelSubscription',
+        inputs: [{ type: 'uint256', name: 'subscriptionId' }],
+        outputs: []
+      }],
+      functionName: 'cancelSubscription',
+      args: [BigInt(cancelRequest.subscriptionId)]
+    });
+    
+    // Wrap in executeOnSmartWallet()
+    const executeData = encodeFunctionData({
+      abi: [{
+        type: 'function',
+        name: 'executeOnSmartWallet',
+        inputs: [
+          { type: 'address', name: 'smartWallet' },
+          { type: 'bytes', name: 'data' },
+          { type: 'uint256', name: 'nonce' },
+          { type: 'uint256', name: 'deadline' },
+          { type: 'bytes', name: 'signature' }
+        ],
+        outputs: [{ type: 'bytes' }]
+      }],
+      functionName: 'executeOnSmartWallet',
+      args: [
+        cancelRequest.smartWalletAddress as `0x${string}`,
+        cancelSubData,
+        BigInt(cancelRequest.eoaNonce),
+        BigInt(Math.floor(Date.now() / 1000 + 600)), // 10 minutes from now
+        '0x' // Empty signature - paymaster is authorized
+      ]
+    });
+    
+    // Submit transaction
+    const hash = await walletClient.sendTransaction({
+      to: cancelRequest.eoaAddress as `0x${string}`,
+      data: executeData,
+      value: 0n
+    });
+
+    console.log('✅ Subscription cancellation submitted:', hash);
+
+    return {
+      transactionHash: hash,
+      success: true
+    };
+
+  } catch (error) {
+    console.error('❌ Error cancelling subscription:', error);
+    return {
+      transactionHash: '',
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+async function handleGetSubscriptions(smartWalletAddress: string, env: Env): Promise<{ subscriptions: any[] }> {
+  try {
+    console.log(`📝 Fetching subscriptions for smart wallet: ${smartWalletAddress}`);
+
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http(env.RPC_URL)
+    });
+
+    // Query Blockscout for SubscriptionCreated events from this smart wallet
+    const BLOCKSCOUT_API = "https://arbitrum-sepolia.blockscout.com/api";
+    const SUBSCRIPTION_CREATED_EVENT = keccak256(toHex('SubscriptionCreated(uint256,address,uint256,uint256)'));
+    
+    const eventUrl = `${BLOCKSCOUT_API}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&address=${smartWalletAddress}&topic0=${SUBSCRIPTION_CREATED_EVENT}`;
+    
+    const response = await fetch(eventUrl);
+    const data = await response.json();
+
+    if (data.status !== '1' || !data.result) {
+      return { subscriptions: [] };
+    }
+
+    const subscriptions = [];
+    
+    for (const event of data.result) {
+      const subscriptionId = parseInt(event.topics[1], 16);
+      
+      try {
+        // Query smart wallet to get current subscription state
+        const result = await publicClient.readContract({
+          address: smartWalletAddress as `0x${string}`,
+          abi: [{
+            type: 'function',
+            name: 'getSubscription',
+            inputs: [{ type: 'uint256', name: 'subscriptionId' }],
+            outputs: [
+              { type: 'address', name: 'vendor' },
+              { type: 'uint256', name: 'amountPerInterval' },
+              { type: 'uint256', name: 'interval' },
+              { type: 'uint256', name: 'lastPayment' },
+              { type: 'bool', name: 'active' }
+            ],
+            stateMutability: 'view'
+          }],
+          functionName: 'getSubscription',
+          args: [BigInt(subscriptionId)]
+        }) as [string, bigint, bigint, bigint, boolean];
+
+        // Only include active subscriptions
+        if (result[4]) {
+          subscriptions.push({
+            subscriptionId,
+            vendor: result[0],
+            amountPerInterval: result[1].toString(),
+            interval: result[2].toString(),
+            lastPayment: result[3].toString(),
+            active: result[4]
+          });
+        }
+      } catch (error) {
+        console.error(`Error querying subscription ${subscriptionId}:`, error);
+        // Continue with other subscriptions
+      }
+    }
+
+    return { subscriptions };
+
+  } catch (error) {
+    console.error('❌ Error fetching subscriptions:', error);
+    return { subscriptions: [] };
   }
 }
