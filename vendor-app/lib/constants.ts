@@ -1,6 +1,6 @@
 // Contract addresses and constants for Arbitrum Sepolia
 
-export const SMART_WALLET_FACTORY = "0xb8e6187beaa5e11aec0e777b95d031b0f6742462";
+export const SMART_WALLET_FACTORY = "0x884ff7a379192ef709e0d865d52adfa967e1ab94";
 export const EOA_DELEGATION_ADDRESS = "0x0977081db8717cb860716edcd117ef1fbf108857";
 export const PYUSD_ADDRESS = "0x637A1259C6afd7E3AdF63993cA7E58BB438aB1B1";
 

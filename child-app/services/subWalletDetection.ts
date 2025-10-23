@@ -1,7 +1,7 @@
 import { createPublicClient, http, parseAbi } from 'viem';
 import { arbitrumSepolia } from 'viem/chains';
 
-const SMART_WALLET_FACTORY_ADDRESS = "0xb8e6187beaa5e11aec0e777b95d031b0f6742462"; // Updated SmartWalletFactory address
+const SMART_WALLET_FACTORY_ADDRESS = "0x884ff7a379192ef709e0d865d52adfa967e1ab94"; // Updated SmartWalletFactory address
 
 interface SubWalletInfo {
   childEOA: string;

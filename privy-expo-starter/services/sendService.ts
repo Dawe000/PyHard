@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 const CF_WORKER_URL = "https://paymaster-cf-worker.dawid-pisarczyk.workers.dev";
 
 // EIP-7702 EOADelegation contract address
-const EOADelegation_ADDRESS = "0x0ef2789981b7a7a52e21320a21afcb4c31903883";
+const EOADelegation_ADDRESS = "0x0977081db8717cb860716edcd117ef1fbf108857";
 const PRIVY_APP_ID = "cmgtb4vg702vqld0da5wktriq"; // Real Privy App ID from app.json
 
 interface SponsorRequest {
@@ -127,7 +127,7 @@ export async function sendPYUSD(
 
     if (data.error) {
       console.error("❌ Error in response:", data.error);
-      throw new Error(data.error);
+      throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
     }
 
     if (!data.success) {

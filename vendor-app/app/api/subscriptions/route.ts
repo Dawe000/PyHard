@@ -18,11 +18,32 @@ export async function GET(request: Request) {
   try {
     console.log(`🔍 Finding subscriptions for vendor: ${vendor}`);
 
-    // For now, let's just query the known smart wallet that has subscriptions
-    // TODO: Implement proper factory event parsing later
-    const knownSmartWallets = [
-      '0xb0fcc8b6dfc093e331a004dd7a5e3ae366ae4376' // The one we know has subscriptions
-    ];
+    // Step 1: Get all SmartWallets created by the factory
+    const walletCreatedEventSignature = keccak256(toHex('WalletCreated(address,address)'));
+    const factoryLogsUrl = `${BLOCKSCOUT_API}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&topic0=${walletCreatedEventSignature}&address=${SMART_WALLET_FACTORY}`;
+    
+    console.log('📡 Fetching factory logs:', factoryLogsUrl);
+    
+    const factoryResponse = await fetch(factoryLogsUrl);
+    const factoryData = await factoryResponse.json();
+
+    if (factoryData.status !== '1' || !factoryData.result) {
+      console.log('❌ No factory logs found');
+      return NextResponse.json({ subscriptions: [] });
+    }
+
+    // Extract smart wallet addresses from factory events
+    const smartWalletAddresses: string[] = factoryData.result.map((log: any) => {
+      // SmartWallet address is in topics[2] (third topic)
+      // Format: 0x000000000000000000000000{address}
+      const topic = log.topics[2];
+      if (topic && topic.length === 66) { // 0x + 64 chars
+        return '0x' + topic.slice(26); // Remove padding, keep last 40 chars
+      }
+      return null;
+    }).filter(addr => addr !== null);
+
+    console.log(`📊 Found ${smartWalletAddresses.length} smart wallets from factory`);
 
     const publicClient = createPublicClient({
       chain: arbitrumSepolia,
@@ -31,7 +52,7 @@ export async function GET(request: Request) {
 
     const allSubscriptions: any[] = [];
 
-    for (const smartWalletAddress of knownSmartWallets) {
+    for (const smartWalletAddress of smartWalletAddresses) {
       try {
         console.log(`📋 Checking smart wallet: ${smartWalletAddress}`);
         

@@ -126,18 +126,26 @@ contract SmartWallet is ISmartWallet, Ownable, ReentrancyGuard {
         require(amount > 0, "Amount must be positive");
         require(interval > 0, "Interval must be positive");
         
+        // Check if we have enough PYUSD balance for the first payment
+        require(pyusd.balanceOf(address(this)) >= amount, "Insufficient PYUSD balance for first payment");
+        
         uint256 subscriptionId = _nextSubscriptionId++;
         subscriptions[subscriptionId] = Subscription({
             vendor: vendor,
             amountPerInterval: amount,
             interval: interval,
-            lastPayment: block.timestamp,
+            lastPayment: block.timestamp, // Set to current time
             active: true
         });
         
         subscriptionCount++;
         
+        // Execute the first payment immediately
+        require(pyusd.transfer(vendor, amount), "First payment transfer failed");
+        
         emit SubscriptionCreated(subscriptionId, vendor, amount, interval);
+        emit SubscriptionPaymentExecuted(subscriptionId, amount);
+        
         return subscriptionId;
     }
     

@@ -382,8 +382,10 @@ async function handleSponsorTransaction(request: Request, env: Env): Promise<Spo
     // Submit transaction TO USER'S EOA (not SmartWallet!) with EIP-7702 authorization
     console.log('🚀 Submitting transaction TO USER EOA with EIP-7702 authorization...');
     
-    // Parse the signature JSON string
-    const signature = JSON.parse(sponsorRequest.signature);
+    // Parse the signature JSON string (it might already be an object)
+    const signature = typeof sponsorRequest.signature === 'string' 
+      ? JSON.parse(sponsorRequest.signature) 
+      : sponsorRequest.signature;
     
     // Format the authorization list properly for viem
     const authorizationList = [{

@@ -242,7 +242,7 @@ const SendScreen = ({ onBack, initialRecipient, initialUsername }: SendScreenPro
       body: {
         method: 'eth_sign7702Authorization',
         params: {
-          contract: "0x58b15c7291c316e0b3c8af875de54f07e0e4b05d", // EOADelegation V4 contract address
+          contract: "0x0977081db8717cb860716edcd117ef1fbf108857", // EOADelegation contract address
           chain_id: CHAIN_ID,
           nonce: currentNonce
         }
