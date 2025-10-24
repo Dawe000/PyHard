@@ -2,6 +2,7 @@
 // Handles gasless sub-account creation using EIP-7702 delegation
 
 import { encodeFunctionData } from 'viem';
+import { createPrivyClient } from '@privy-io/expo';
 import { EOA_DELEGATION_ADDRESS, ARBITRUM_SEPOLIA_CHAIN_ID } from '@/constants/contracts';
 
 const CF_WORKER_URL = "https://paymaster-cf-worker.dawid-pisarczyk.workers.dev";
@@ -87,7 +88,7 @@ export async function createSubAccountGasless(
     console.log("✅ Privy authorization signature extracted:", authorizationSignature);
 
     // Step 3: Get access token for the API call (same as transfer code)
-    const { createPrivyClient } = await import('@privy-io/expo');
+    // Using static import
     const privy = createPrivyClient({
       appId: 'cmgtb4vg702vqld0da5wktriq',
       clientId: 'client-WY6RdMvmLZHLWnPB2aNZAEshGmBTwtGUAx299bCthg7U9'

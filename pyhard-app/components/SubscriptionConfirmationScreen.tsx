@@ -9,7 +9,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
-import { usePrivy, getUserEmbeddedEthereumWallet, useAuthorizationSignature } from '@privy-io/expo';
+import { usePrivy, getUserEmbeddedEthereumWallet, useAuthorizationSignature, createPrivyClient } from '@privy-io/expo';
 import { getOrCreateSmartWallet } from '@/services/smartWallet';
 import { createSubscriptionGasless } from '@/services/subscriptionService';
 import { SubscriptionRequestData, formatInterval } from "@/utils/qrCodeUtils";
@@ -49,7 +49,6 @@ export const SubscriptionConfirmationScreen = ({
       console.log("🚀 Starting subscription creation...");
 
       // Get or create smart wallet
-      const { createPrivyClient } = await import('@privy-io/expo');
       const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
       const accessToken = await privyClient.getAccessToken();
 

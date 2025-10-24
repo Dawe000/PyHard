@@ -30,4 +30,8 @@ config.resolver.alias = {
   "@expo/metro-config": require.resolve("@expo/metro-config"),
 };
 
+// Clear any cached paths that might reference old directory structure
+config.resolver.unstable_enableSymlinks = false;
+config.resolver.unstable_enablePackageExports = true;
+
 module.exports = config;

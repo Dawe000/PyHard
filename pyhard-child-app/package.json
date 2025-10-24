@@ -1,5 +1,5 @@
 {
-  "name": "child-app",
+  "name": "pyhard-child-app",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -24,8 +24,10 @@
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@babel/core": "^7.25.2",
     "@types/react": "~19.1.0",
     "@types/uuid": "^10.0.0",
+    "babel-preset-expo": "~12.0.0",
     "typescript": "~5.9.2"
   },
   "private": true

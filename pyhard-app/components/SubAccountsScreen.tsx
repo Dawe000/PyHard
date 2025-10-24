@@ -16,7 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
 import { LinearGradient } from "expo-linear-gradient";
-import { usePrivy, getUserEmbeddedEthereumWallet, useAuthorizationSignature } from '@privy-io/expo';
+import { usePrivy, getUserEmbeddedEthereumWallet, useAuthorizationSignature, createPrivyClient } from '@privy-io/expo';
 import { getOrCreateSmartWallet } from '@/services/smartWallet';
 import { createPublicClient, http, parseAbi } from 'viem';
 import { arbitrumSepolia } from 'viem/chains';
@@ -58,7 +58,7 @@ export const SubAccountsScreen = () => {
       console.log('🔍 Fetching sub-accounts from smart contract for:', account.address);
       
       // Get Privy access token
-      const { createPrivyClient } = await import('@privy-io/expo');
+      // Using static import
       const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
       const accessToken = await privyClient.getAccessToken();
       
@@ -256,7 +256,7 @@ export const SubAccountsScreen = () => {
       setActionLoading(true);
       
       // Get Privy access token
-      const { createPrivyClient } = await import('@privy-io/expo');
+      // Using static import
       const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
       const accessToken = await privyClient.getAccessToken();
       
@@ -367,7 +367,7 @@ export const SubAccountsScreen = () => {
       setActionLoading(true);
       
       // Get Privy access token
-      const { createPrivyClient } = await import('@privy-io/expo');
+      // Using static import
       const privyClient = createPrivyClient('cmgtb4vg702vqld0da5wktriq');
       const accessToken = await privyClient.getAccessToken();
       
