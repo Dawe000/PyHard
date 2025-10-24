@@ -148,7 +148,7 @@ export const BalanceScreen = ({ navigation }: BalanceScreenProps) => {
     // Cache logic: skip if fetched in last 30 seconds (unless manual refresh)
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTime.current;
-    const CACHE_DURATION = 30000; // 30 seconds
+    const CACHE_DURATION = 5000; // 5 seconds
 
     if (!isManualRefresh && timeSinceLastFetch < CACHE_DURATION && lastFetchTime.current > 0) {
       console.log("📦 Using cached data (fetched", Math.floor(timeSinceLastFetch / 1000), "seconds ago)");

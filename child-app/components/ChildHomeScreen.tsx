@@ -1,8 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, SafeAreaView } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { ParentWalletInfo } from '../services/subWalletDetection';
 import { loadChildWallet } from '../utils/crypto';
+import { formatUnits } from 'viem';
+
+const PYUSD_DECIMALS = 6;
 
 interface ChildHomeScreenProps {
   onBack: () => void;
@@ -13,6 +26,7 @@ interface ChildHomeScreenProps {
 export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, walletInfo, onSendMoney }) => {
   const [loading, setLoading] = useState(true);
   const [childEOA, setChildEOA] = useState<string>('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     const loadWallet = async () => {
@@ -32,517 +46,366 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
     loadWallet();
   }, []);
 
-  // If we have walletInfo, we're ready to show the home screen
   useEffect(() => {
     if (walletInfo) {
       setLoading(false);
     }
   }, [walletInfo]);
 
-  const handleSendMoney = () => {
-    if (onSendMoney) {
-      onSendMoney();
-    } else {
-      Alert.alert(
-        'Send Money', 
-        'Send money functionality coming soon!\n\nThis will allow you to send PYUSD to other addresses using your sub-wallet.',
-        [{ text: 'OK' }]
-      );
-    }
+  const onRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  }, []);
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
-  const handleViewTransactions = () => {
-    Alert.alert('Transactions', 'Transaction history coming soon!');
-  };
-
-  const formatAmount = (amount: bigint, decimals: number = 6) => {
-    return (Number(amount) / Math.pow(10, decimals)).toFixed(2);
-  };
-
-  const formatTimestamp = (timestamp: bigint) => {
-    return new Date(Number(timestamp) * 1000).toLocaleDateString();
+  const formatAmount = (amount: bigint | string) => {
+    if (typeof amount === 'string') return amount;
+    return parseFloat(formatUnits(amount, PYUSD_DECIMALS)).toFixed(2);
   };
 
   const getRemainingBalance = () => {
     if (!walletInfo) return '0.00';
-    const remaining = walletInfo.subWalletInfo.spendingLimit - walletInfo.subWalletInfo.spentThisPeriod;
-    return formatAmount(remaining);
+    const limit = Number(formatAmount(walletInfo.subWalletInfo.spendingLimit));
+    const spent = Number(formatAmount(walletInfo.subWalletInfo.spentThisPeriod));
+    return (limit - spent).toFixed(2);
   };
 
-  const getTimeUntilReset = () => {
-    if (!walletInfo) return 'Unknown';
-    
-    const periodStart = Number(walletInfo.subWalletInfo.periodStart);
-    const periodDuration = Number(walletInfo.subWalletInfo.periodDuration);
-    const nextReset = periodStart + periodDuration;
-    const now = Math.floor(Date.now() / 1000);
-    
-    if (now >= nextReset) {
-      return 'Period has ended';
-    }
-    
-    const timeLeft = nextReset - now;
-    const days = Math.floor(timeLeft / (24 * 60 * 60));
-    const hours = Math.floor((timeLeft % (24 * 60 * 60)) / (60 * 60));
-    const minutes = Math.floor((timeLeft % (60 * 60)) / 60);
-    
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m`;
-    } else if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else {
-      return `${minutes}m`;
-    }
+  const calculateSpentPercentage = () => {
+    if (!walletInfo) return 0;
+    const limit = Number(formatAmount(walletInfo.subWalletInfo.spendingLimit));
+    const spent = Number(formatAmount(walletInfo.subWalletInfo.spentThisPeriod));
+    return limit > 0 ? (spent / limit) * 100 : 0;
   };
 
-  const getSpentAmount = () => {
-    if (!walletInfo) return '0.00';
-    return formatAmount(walletInfo.subWalletInfo.spentThisPeriod);
+  const getDaysUntilReset = () => {
+    if (!walletInfo) return 0;
+    return Math.floor(
+      (Number(walletInfo.subWalletInfo.periodStart) + Number(walletInfo.subWalletInfo.periodDuration) - Date.now() / 1000) / 86400
+    );
   };
 
-  const getTotalLimit = () => {
-    if (!walletInfo) return '0.00';
-    return formatAmount(walletInfo.subWalletInfo.spendingLimit);
-  };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007bff" />
-        <Text style={styles.loadingText}>Loading your wallet...</Text>
-      </View>
+      <LinearGradient
+        colors={['#0a0e27', '#1a1f3a', '#0a0e27']}
+        style={styles.container}
+      >
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0079c1" />
+          <Text style={styles.loadingText}>Loading wallet...</Text>
+        </View>
+      </LinearGradient>
     );
   }
 
   if (!walletInfo) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Child Wallet</Text>
-        </View>
-        
-        <View style={styles.content}>
-          <Ionicons name="hourglass-outline" size={64} color="#ccc" />
+      <LinearGradient
+        colors={['#0a0e27', '#1a1f3a', '#0a0e27']}
+        style={styles.container}
+      >
+        <View style={styles.waitingContainer}>
           <Text style={styles.waitingTitle}>Waiting for Parent</Text>
           <Text style={styles.waitingText}>
             Your parent needs to scan your QR code and create your sub-account.
           </Text>
-          <Text style={styles.childAddress}>
-            Your EOA: {childEOA.slice(0, 6)}...{childEOA.slice(-4)}
-          </Text>
+          <View style={styles.addressCard}>
+            <Text style={styles.addressLabel}>Your Address</Text>
+            <Text style={styles.addressValue}>{formatAddress(childEOA)}</Text>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.title}>My Wallet</Text>
-      </View>
+    <LinearGradient
+      colors={['#0a0e27', '#1a1f3a', '#0a0e27']}
+      style={styles.container}
+    >
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            tintColor="#0079c1"
+          />
+        }
+      >
+        {/* Header - Wallet Info */}
+        <View style={styles.headerCard}>
+          <LinearGradient
+            colors={['rgba(0,121,193,0.1)', 'rgba(0,48,135,0.05)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradientBorder}
+          >
+            <View style={styles.headerContent}>
+              <View style={styles.headerTop}>
+                <Text style={styles.greeting}>HELLO, CHILD</Text>
+              </View>
+              <TouchableOpacity style={styles.addressContainer}>
+                <Text style={styles.addressLabel}>&gt; WALLET</Text>
+                <Text style={styles.addressValue}>{formatAddress(childEOA)}</Text>
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        </View>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Balance Card */}
-        <View style={styles.balanceCard}>
-          <View style={styles.balanceHeader}>
-            <Text style={styles.balanceLabel}>Available Balance</Text>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.statusDot, { backgroundColor: walletInfo.subWalletInfo.active ? '#34C759' : '#FF3B30' }]} />
-              <Text style={styles.statusText}>
-                {walletInfo.subWalletInfo.active ? 'Active' : 'Inactive'}
-              </Text>
+        <View style={styles.balanceSection}>
+          <LinearGradient
+            colors={['rgba(0,121,193,0.3)', 'rgba(0,48,135,0.2)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.balanceGradientBorder}
+          >
+            <View style={styles.balanceCard}>
+              <Text style={styles.balanceTitle}>AVAILABLE BALANCE</Text>
+              <Text style={styles.balanceAmount}>${getRemainingBalance()}</Text>
+              <Text style={styles.balanceSubtext}>PYUSD</Text>
+              <View style={styles.liveBadge}>
+                <Text style={styles.liveBadgeText}>&gt; Live on Arbitrum Sepolia</Text>
+              </View>
             </View>
-          </View>
-          
-          <Text style={styles.balanceAmount}>
-            {getRemainingBalance()} PYUSD
-          </Text>
-          
-          <View style={styles.balanceDetails}>
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceDetailLabel}>Monthly Limit:</Text>
-              <Text style={styles.balanceDetailValue}>{getTotalLimit()} PYUSD</Text>
-            </View>
-            <View style={styles.balanceRow}>
-              <Text style={styles.balanceDetailLabel}>Spent:</Text>
-              <Text style={styles.balanceDetailValue}>{getSpentAmount()} PYUSD</Text>
-            </View>
-          </View>
-          
-          <View style={styles.timeContainer}>
-            <Ionicons name="time-outline" size={16} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.timeRemaining}>
-              Reset in: {getTimeUntilReset()}
-            </Text>
-          </View>
-          
-          {/* Progress Bar */}
-          <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { 
-                    width: `${Math.min((Number(walletInfo.subWalletInfo.spentThisPeriod) / Number(walletInfo.subWalletInfo.spendingLimit)) * 100, 100)}%` 
-                  }
-                ]} 
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {((Number(walletInfo.subWalletInfo.spentThisPeriod) / Number(walletInfo.subWalletInfo.spendingLimit)) * 100).toFixed(1)}% used
-            </Text>
-          </View>
+          </LinearGradient>
         </View>
 
-        {/* Wallet Info */}
-        <View style={styles.infoCard}>
-          <Text style={styles.cardTitle}>Wallet Information</Text>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Parent EOA:</Text>
-            <Text style={styles.infoValue}>
-              {walletInfo.parentEOA.slice(0, 6)}...{walletInfo.parentEOA.slice(-4)}
-            </Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Smart Wallet:</Text>
-            <Text style={styles.infoValue}>
-              {walletInfo.smartWalletAddress.slice(0, 6)}...{walletInfo.smartWalletAddress.slice(-4)}
-            </Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sub-Wallet ID:</Text>
-            <Text style={styles.infoValue}>#{walletInfo.subWalletId}</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Period Start:</Text>
-            <Text style={styles.infoValue}>{formatTimestamp(walletInfo.subWalletInfo.periodStart)}</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Period Duration:</Text>
-            <Text style={styles.infoValue}>{Number(walletInfo.subWalletInfo.periodDuration) / (24 * 60 * 60)} days</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Mode:</Text>
-            <Text style={styles.infoValue}>
-              {walletInfo.subWalletInfo.mode === 0 ? 'Allowance' : 'Pocket Money'}
-            </Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Status:</Text>
-            <Text style={[styles.infoValue, { color: walletInfo.subWalletInfo.active ? '#34C759' : '#FF3B30' }]}>
-              {walletInfo.subWalletInfo.active ? 'Active' : 'Inactive'}
-            </Text>
-          </View>
-        </View>
+        {/* Quick Actions */}
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>QUICK ACTIONS</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={onSendMoney || (() => Alert.alert('Send Money', 'Use the Send tab!'))}
+            >
+              <LinearGradient
+                colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.actionGradient}
+              >
+                <View style={styles.actionContent}>
+                  <Ionicons name="send" size={28} color="#0079c1" />
+                  <Text style={styles.actionText}>SEND</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
 
-        {/* Quick Stats */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="wallet-outline" size={24} color="#007bff" />
-            <Text style={styles.statValue}>#{walletInfo.subWalletId}</Text>
-            <Text style={styles.statLabel}>Sub-Wallet ID</Text>
+            <TouchableOpacity 
+              style={styles.actionCard}
+              onPress={() => Alert.alert('Coming Soon', 'Add funds feature coming soon!')}
+            >
+              <LinearGradient
+                colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.actionGradient}
+              >
+                <View style={styles.actionContent}>
+                  <Ionicons name="add-circle" size={28} color="#34C759" />
+                  <Text style={styles.actionText}>ADD FUNDS</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
-          
-          <View style={styles.statCard}>
-            <Ionicons name="calendar-outline" size={24} color="#34C759" />
-            <Text style={styles.statValue}>{Number(walletInfo.subWalletInfo.periodDuration) / (24 * 60 * 60)}d</Text>
-            <Text style={styles.statLabel}>Period</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <Ionicons name={walletInfo.subWalletInfo.mode === 0 ? "card-outline" : "cash-outline"} size={24} color="#FF9500" />
-            <Text style={styles.statValue}>{walletInfo.subWalletInfo.mode === 0 ? 'Allowance' : 'Pocket'}</Text>
-            <Text style={styles.statLabel}>Mode</Text>
-          </View>
-        </View>
-
-        {/* Actions */}
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={[styles.actionButton, styles.primaryAction]} onPress={handleSendMoney}>
-            <Ionicons name="send" size={20} color="#fff" />
-            <Text style={styles.actionButtonText}>Send Money</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.actionButton, styles.secondaryAction]} onPress={handleViewTransactions}>
-            <Ionicons name="receipt-outline" size={20} color="#007bff" />
-            <Text style={[styles.actionButtonText, styles.secondaryActionText]}>Transactions</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 40,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f0f2f5',
   },
   loadingText: {
-    marginTop: 10,
+    color: '#ffffff',
     fontSize: 16,
-    color: '#333',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f2f5',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-    paddingBottom: 40,
-  },
-  balanceCard: {
-    backgroundColor: '#007bff',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  balanceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  statusIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  balanceDetails: {
     marginTop: 16,
-    marginBottom: 12,
+    opacity: 0.8,
   },
-  balanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  balanceDetailLabel: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-  },
-  balanceDetailValue: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  waitingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    marginBottom: 16,
-  },
-  balanceLabel: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 8,
-  },
-  balanceAmount: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-  },
-  balanceSubtext: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: 4,
-  },
-  timeRemaining: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '600',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  progressContainer: {
-    marginTop: 8,
-  },
-  progressBar: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 4,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#FFD700',
-    borderRadius: 3,
-  },
-  progressText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.8)',
-    textAlign: 'center',
-  },
-  infoCard: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 16,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#666',
-    flex: 1,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    flex: 1,
-    textAlign: 'right',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  statValue: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 8,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  primaryAction: {
-    backgroundColor: '#007bff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 8,
-  },
-  secondaryAction: {
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    gap: 8,
-  },
-  actionButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryActionText: {
-    color: '#007bff',
+    padding: 32,
   },
   waitingTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 20,
-    marginBottom: 10,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 16,
+    textAlign: 'center',
   },
   waitingText: {
     fontSize: 16,
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 32,
     lineHeight: 24,
   },
-  childAddress: {
-    fontSize: 14,
-    color: '#007bff',
+  addressCard: {
+    backgroundColor: 'rgba(26, 31, 58, 0.6)',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    width: '100%',
+  },
+  addressLabel: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    marginBottom: 8,
     fontFamily: 'monospace',
+  },
+  addressValue: {
+    color: '#0079c1',
+    fontSize: 14,
+    fontWeight: '500',
+    fontFamily: 'monospace',
+  },
+  headerCard: {
+    marginBottom: 16,
+  },
+  headerGradientBorder: {
+    borderRadius: 16,
+    padding: 1,
+  },
+  headerContent: {
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 15,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
+  },
+  headerTop: {
+    marginBottom: 12,
+  },
+  greeting: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 8,
+    backgroundColor: 'rgba(0,121,193,0.1)',
+    borderRadius: 8,
+  },
+  address: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    letterSpacing: 0.5,
+    marginRight: 4,
+  },
+  addressMono: {
+    fontSize: 12,
+    color: '#0079c1',
+    fontFamily: 'monospace',
+    fontWeight: '500',
+  },
+  balanceSection: {
+    marginVertical: 16,
+  },
+  balanceGradientBorder: {
+    borderRadius: 20,
+    padding: 2,
+  },
+  balanceCard: {
+    backgroundColor: 'rgba(10,14,39,0.8)',
+    borderRadius: 18,
+    padding: 32,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.3)',
+  },
+  balanceTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 2,
+    marginBottom: 12,
+  },
+  balanceAmount: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  balanceSubtext: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace',
+  },
+  liveBadge: {
+    marginTop: 12,
+    padding: 8,
+    backgroundColor: 'rgba(0,121,193,0.15)',
+    borderRadius: 8,
+  },
+  liveBadgeText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace',
+  },
+  actionsSection: {
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+    marginBottom: 12,
+    marginLeft: 4,
+  },
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionCard: {
+    flex: 1,
+  },
+  actionGradient: {
+    borderRadius: 16,
+    padding: 1,
+  },
+  actionContent: {
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 15,
+    padding: 16,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
+  },
+  actionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

@@ -8,8 +8,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { searchUsers, UserProfile } from '../services/userSearchService';
 
@@ -47,66 +47,88 @@ export const ContactsScreen: React.FC<ContactsScreenProps> = ({ onBack, onSelect
   };
 
   const renderUser = ({ item }: { item: UserProfile }) => (
-    <TouchableOpacity
-      style={styles.userCard}
-      onPress={() => handleSelectUser(item)}
-    >
-      <View style={styles.userInfo}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {item.display_name?.charAt(0).toUpperCase() || item.username?.charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
-        <View style={styles.userDetails}>
-          <Text style={styles.userName}>{item.display_name || item.username || 'Unknown'}</Text>
-          {item.username && (
-            <Text style={styles.username}>@{item.username}</Text>
-          )}
-          <Text style={styles.walletAddress}>
-            {item.wallet_address.slice(0, 10)}...{item.wallet_address.slice(-8)}
-          </Text>
-          {item.bio && (
-            <Text style={styles.bio} numberOfLines={2}>{item.bio}</Text>
-          )}
-        </View>
-      </View>
-
-      <Ionicons name="chevron-forward" size={20} color="#ccc" />
-    </TouchableOpacity>
+    <View style={styles.userCard}>
+      <LinearGradient
+        colors={['rgba(0,121,193,0.15)', 'rgba(0,48,135,0.1)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.userGradient}
+      >
+        <TouchableOpacity
+          style={styles.userContent}
+          onPress={() => handleSelectUser(item)}
+        >
+          <View style={styles.avatarContainer}>
+            <Text style={styles.avatarText}>
+              {item.display_name?.charAt(0).toUpperCase() || item.username?.charAt(0).toUpperCase() || 'U'}
+            </Text>
+          </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>{item.display_name || item.username || 'Unknown'}</Text>
+            {item.username && (
+              <Text style={styles.username}>@{item.username}</Text>
+            )}
+            <Text style={styles.walletAddress}>
+              {item.wallet_address.slice(0, 10)}...{item.wallet_address.slice(-8)}
+            </Text>
+            {item.bio && (
+              <Text style={styles.bio} numberOfLines={2}>{item.bio}</Text>
+            )}
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+        </TouchableOpacity>
+      </LinearGradient>
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={['#0a0e27', '#001133', '#0a0e27']}
+      style={styles.container}
+    >
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Search Users</Text>
+        <Text style={styles.headerTitle}>USER DIRECTORY</Text>
+        <Ionicons name="people" size={28} color="#0079c1" />
       </View>
 
-      <View style={styles.content}>
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search by username or name..."
-            value={searchQuery}
-            onChangeText={handleSearch}
-            placeholderTextColor="#999"
-            autoFocus
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              style={styles.clearButton}
-            >
-              <Ionicons name="close-circle" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-        </View>
+      {/* Search Bar */}
+      <View style={styles.searchSection}>
+        <LinearGradient
+          colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.searchGradient}
+        >
+          <View style={styles.searchContainer}>
+            <Ionicons name="search" size={20} color="rgba(255,255,255,0.5)" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search by username or name..."
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              value={searchQuery}
+              onChangeText={handleSearch}
+              autoCapitalize="none"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => handleSearch('')}>
+                <Ionicons name="close-circle" size={20} color="rgba(255,255,255,0.5)" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </LinearGradient>
 
-        {/* Search Results */}
+        {/* Search Info */}
+        <View style={styles.infoContainer}>
+          <Ionicons name="information-circle" size={16} color="#0079c1" />
+          <Text style={styles.infoText}>
+            Search for users by their username or display name
+          </Text>
+        </View>
+      </View>
+
+      {/* Results */}
+      <View style={styles.content}>
         {isSearching ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#007bff" />
@@ -143,95 +165,100 @@ export const ContactsScreen: React.FC<ContactsScreenProps> = ({ onBack, onSelect
           />
         )}
       </View>
-    </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 20,
+    paddingTop: 60,
+    paddingBottom: 20,
   },
-  backButton: {
-    marginRight: 15,
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
-  title: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+  searchSection: {
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  searchGradient: {
+    borderRadius: 12,
+    padding: 1,
+    marginBottom: 12,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: 'rgba(10,14,39,0.8)',
+    borderRadius: 11,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  searchIcon: {
-    marginRight: 12,
+    paddingVertical: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
   },
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333',
+    color: '#FFFFFF',
   },
-  clearButton: {
-    marginLeft: 8,
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  infoText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
   },
   listContent: {
     paddingBottom: 20,
   },
   userCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  userInfo: {
-    flex: 1,
+  userGradient: {
+    borderRadius: 12,
+    padding: 1,
+  },
+  userContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 11,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
   },
   avatarContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#007bff',
+    backgroundColor: 'rgba(0,121,193,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
   },
   avatarText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#0079c1',
   },
   userDetails: {
     flex: 1,
@@ -239,23 +266,24 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   username: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: '#0079c1',
     marginBottom: 2,
+    fontFamily: 'monospace',
   },
   walletAddress: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
     fontFamily: 'monospace',
     marginBottom: 4,
   },
   bio: {
     fontSize: 12,
-    color: '#666',
+    color: 'rgba(255,255,255,0.6)',
     lineHeight: 16,
   },
   emptyContainer: {
@@ -267,24 +295,24 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    lineHeight: 20,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 60,
   },
   loadingText: {
-    marginTop: 16,
     fontSize: 16,
-    color: '#666',
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 16,
   },
 });

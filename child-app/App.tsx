@@ -4,19 +4,15 @@ import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, SafeAreaView } from 'react-native';
 import { GetStartedScreen } from './components/GetStartedScreen';
 import { QRCodeDisplay } from './components/QRCodeDisplay';
-import { ChildHomeScreen } from './components/ChildHomeScreen';
-import { SendMoneyScreen } from './components/SendMoneyScreen';
-import { ContactsScreen } from './components/ContactsScreen';
+import { MainNavigation } from './components/MainNavigation';
 import { QRCodeData } from './utils/qrCodeUtils';
 import { startSubWalletPolling, ParentWalletInfo } from './services/subWalletDetection';
 import { loadChildWallet } from './utils/crypto';
-import { UserProfile } from './services/userSearchService';
 
 export default function App() {
   const [qrData, setQrData] = useState<QRCodeData | null>(null);
   const [walletInfo, setWalletInfo] = useState<ParentWalletInfo | null>(null);
-  const [currentScreen, setCurrentScreen] = useState<'get-started' | 'qr-display' | 'home' | 'send-money' | 'contacts'>('get-started');
-  const [selectedContact, setSelectedContact] = useState<UserProfile | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<'get-started' | 'qr-display' | 'main'>('get-started');
 
   const handleQRGenerated = (data: QRCodeData) => {
     setQrData(data);
@@ -28,35 +24,15 @@ export default function App() {
     setCurrentScreen('get-started');
   };
 
-  const handleBackToQR = () => {
-    setCurrentScreen('qr-display');
-  };
-
-  const handleSendMoney = () => {
-    setCurrentScreen('send-money');
-  };
-
-  const handleBackToHome = () => {
-    setCurrentScreen('home');
-  };
-
-  const handleOpenContacts = () => {
-    setCurrentScreen('contacts');
-  };
-
-  const handleBackToSend = () => {
-    setCurrentScreen('send-money');
-  };
-
-  const handleSelectContact = (user: UserProfile) => {
-    setSelectedContact(user);
-    setCurrentScreen('send-money');
+  const handleLogout = () => {
+    setWalletInfo(null);
+    setCurrentScreen('get-started');
   };
 
   const handleSubWalletDetected = (info: ParentWalletInfo) => {
-    console.log('🎉 Sub-wallet detected! Navigating to home screen.');
+    console.log('🎉 Sub-wallet detected! Navigating to main screen.');
     setWalletInfo(info);
-    setCurrentScreen('home');
+    setCurrentScreen('main');
   };
 
   const handleSubWalletDeactivated = () => {
@@ -67,10 +43,10 @@ export default function App() {
 
   // Start polling when QR is displayed
   useEffect(() => {
-    if (currentScreen === 'qr-display' && qrData) {
+    if (currentScreen === 'qr-display' && qrData && qrData.type === 'subaccount_request') {
       console.log('🔄 Starting sub-wallet polling...');
       const stopPolling = startSubWalletPolling(
-        qrData.data.childEOA,
+        (qrData.data as any).childEOA,
         handleSubWalletDetected,
         handleSubWalletDeactivated,
         5000 // Poll every 5 seconds
@@ -111,35 +87,18 @@ export default function App() {
 
   const renderScreen = () => {
     switch (currentScreen) {
-      case 'home':
+      case 'main':
         return (
-          <ChildHomeScreen 
-            onBack={handleBackToQR}
+          <MainNavigation 
             walletInfo={walletInfo}
-            onSendMoney={handleSendMoney}
-          />
-        );
-      case 'send-money':
-        return (
-          <SendMoneyScreen
-            onBack={handleBackToHome}
-            walletInfo={walletInfo}
-            onOpenContacts={handleOpenContacts}
-            selectedContact={selectedContact ? { name: selectedContact.display_name || selectedContact.username || 'Unknown', address: selectedContact.wallet_address } : null}
-          />
-        );
-      case 'contacts':
-        return (
-          <ContactsScreen
-            onBack={handleBackToSend}
-            onSelectContact={handleSelectContact}
+            onLogout={handleLogout}
           />
         );
       case 'qr-display':
-        return qrData ? (
+        return qrData && qrData.type === 'subaccount_request' ? (
           <QRCodeDisplay
             qrData={qrData}
-            childName={qrData.data.childName}
+            childName={(qrData.data as any).childName}
             onClose={handleClose}
           />
         ) : (
@@ -163,6 +122,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#0a0e27',
   },
 });
