@@ -1,6 +1,6 @@
 # PyHard Ecosystem - Complete Documentation
 
-A comprehensive crypto wallet ecosystem that makes blockchain accessible to non-technical users through gasless transactions, QR code payments, social features, and family banking. Built on Arbitrum with PYUSD integration.
+A comprehensive crypto wallet ecosystem that makes blockchain accessible to non-technical users through gasless transactions, QR code payments, social features, and family banking. Users can start using PyHard without any crypto wallet - just sign up with email or social accounts and embedded wallets are created automatically. Built on Arbitrum with PYUSD integration.
 
 ## 🚀 Ecosystem Overview
 
@@ -22,10 +22,12 @@ PyHard consists of 6 core components working together to create a seamless crypt
 - **Social System**: Contact management and social payments
 - **Subscription Management**: Manage recurring payments to vendors
 - **Sub-Wallet System**: Create and manage family sub-accounts
+- **Walletless Onboarding**: No crypto wallet required - sign up with email/social accounts
 
 ### Technical Stack
 - **React Native + Expo**: Cross-platform mobile development
 - **Privy Integration**: Seamless wallet creation and management
+- **Walletless Onboarding**: Email/social login with automatic embedded wallet creation
 - **Arbitrum Sepolia**: Testnet for development
 - **EIP-7702**: Advanced account abstraction
 

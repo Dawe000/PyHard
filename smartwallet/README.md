@@ -299,16 +299,6 @@ function executeSubWalletTransaction(
 - **Transaction Monitoring**: Monitor all sub-wallet transactions
 - **Emergency Controls**: Emergency account suspension
 
-## 🌉 Cross-Chain Bridge
-
-### PYUSD Bridging
-```solidity
-function bridgePYUSD(uint256 amount, uint32 dstChainId) external payable {
-    // Lock PYUSD on source chain
-    // Send message to destination chain
-    // Emit bridge event
-}
-```
 
 ## 🔧 Development
 

@@ -10,6 +10,12 @@ A revolutionary mobile wallet application that makes crypto accessible for non-t
 - **Arbitrum Network**: Fast and cheap transactions on Arbitrum Sepolia
 - **One-Click Payments**: Send money without worrying about gas fees
 
+### 🚀 Walletless Onboarding
+- **No Wallet Required**: Users can start using PyHard without any crypto wallet
+- **Email/Social Login**: Sign up with email, Google, or social accounts via Privy
+- **Automatic Wallet Creation**: Embedded wallets created seamlessly in the background
+- **Familiar UX**: PayPal-style experience that non-technical users understand
+
 ### 📱 QR Code Payment System
 - **Instant Payments**: Generate QR codes for instant payments
 - **Subscription QR Codes**: Create recurring payment QR codes for vendors
