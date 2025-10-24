@@ -1,3 +1,5 @@
+'use client';
+
 // Headless payment QR generator component for PyHard Vendor SDK
 
 import React, { useState, useCallback } from 'react';

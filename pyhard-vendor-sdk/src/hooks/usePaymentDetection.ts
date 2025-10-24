@@ -1,3 +1,5 @@
+'use client';
+
 // Payment detection hook for PyHard Vendor SDK
 // Polls Blockscout for new payment events
 

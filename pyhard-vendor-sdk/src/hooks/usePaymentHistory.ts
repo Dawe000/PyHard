@@ -1,3 +1,5 @@
+'use client';
+
 // Payment history hook for PyHard Vendor SDK
 
 import { useState, useEffect, useCallback } from 'react';

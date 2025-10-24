@@ -1,3 +1,5 @@
+'use client';
+
 // Headless payment history component for PyHard Vendor SDK
 
 import React from 'react';

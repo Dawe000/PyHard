@@ -1,13 +1,14 @@
+'use client';
+
 // PyHard Provider for SDK configuration and context
 
 import React, { createContext, useContext, ReactNode } from 'react';
-import { WagmiProvider, createConfig, http } from 'wagmi';
-import { arbitrumSepolia } from 'viem/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppKitProvider } from '@reown/appkit/react';
-import { defaultWagmiConfig } from '@reown/appkit/wagmi';
+import { WagmiProvider, type Config } from 'wagmi';
+import { cookieToInitialState, cookieStorage, createStorage } from '@wagmi/core';
+import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
+import { arbitrumSepolia } from '@reown/appkit/networks';
 import { PyHardConfig } from '../types';
-import { ARBITRUM_SEPOLIA_CHAIN } from '../constants';
 
 interface PyHardContextType {
   config: PyHardConfig;
@@ -18,33 +19,39 @@ const PyHardContext = createContext<PyHardContextType | null>(null);
 interface PyHardProviderProps {
   children: ReactNode;
   config?: PyHardConfig;
+  cookies?: string | null;
 }
 
-export function PyHardProvider({ children, config = {} }: PyHardProviderProps) {
-  // Create Wagmi config with Reown AppKit
-  const wagmiConfig = defaultWagmiConfig({
-    chains: [arbitrumSepolia],
-    projectId: 'your-project-id', // This should be provided by the vendor
-    metadata: {
-      name: 'PyHard Vendor SDK',
-      description: 'PyHard subscription and payment management',
-      url: 'https://pyhard.com',
-      icons: ['https://pyhard.com/icon.png']
-    },
-    transports: {
-      [arbitrumSepolia.id]: http(config.rpcUrl || 'https://sepolia-rollup.arbitrum.io/rpc')
-    }
-  });
+// Set up queryClient
+const queryClient = new QueryClient();
 
-  // Create React Query client
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 1000 * 60 * 5, // 5 minutes
-        refetchOnWindowFocus: false
-      }
-    }
-  });
+// Get projectId from environment or use default
+const projectId = "b56e18d47c72ab683b10814fe9495694";
+
+if (!projectId) {
+  throw new Error('Project ID is not defined');
+}
+
+// Set up metadata
+const metadata = {
+  name: 'PyHard Vendor SDK',
+  description: 'PyHard subscription and payment management',
+  url: 'https://pyhard.com',
+  icons: ['https://pyhard.com/icon.png']
+};
+
+// Create the Wagmi adapter
+const wagmiAdapter = new WagmiAdapter({
+  storage: createStorage({
+    storage: cookieStorage
+  }),
+  ssr: true,
+  projectId,
+  networks: [arbitrumSepolia]
+});
+
+export function PyHardProvider({ children, config = {}, cookies }: PyHardProviderProps) {
+  const initialState = cookieToInitialState(wagmiAdapter.wagmiConfig as Config, cookies);
 
   const contextValue: PyHardContextType = {
     config
@@ -52,11 +59,9 @@ export function PyHardProvider({ children, config = {} }: PyHardProviderProps) {
 
   return (
     <PyHardContext.Provider value={contextValue}>
-      <WagmiProvider config={wagmiConfig}>
+      <WagmiProvider config={wagmiAdapter.wagmiConfig as Config} initialState={initialState}>
         <QueryClientProvider client={queryClient}>
-          <AppKitProvider>
-            {children}
-          </AppKitProvider>
+          {children}
         </QueryClientProvider>
       </WagmiProvider>
     </PyHardContext.Provider>

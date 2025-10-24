@@ -1,3 +1,5 @@
+'use client';
+
 // Headless subscription QR generator component for PyHard Vendor SDK
 
 import React, { useState, useCallback } from 'react';

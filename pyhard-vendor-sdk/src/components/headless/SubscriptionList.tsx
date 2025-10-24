@@ -1,3 +1,5 @@
+'use client';
+
 // Headless subscription list component for PyHard Vendor SDK
 
 import React from 'react';

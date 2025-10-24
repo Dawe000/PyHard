@@ -1,3 +1,5 @@
+'use client';
+
 // Styled subscription list component for PyHard Vendor SDK
 
 import React from 'react';

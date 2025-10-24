@@ -124,7 +124,7 @@ export interface SubscriptionListRenderProps {
   subscriptions: Subscription[];
   loading: boolean;
   error: string | null;
-  executePayment: (subscription: Subscription) => Promise<void>;
+  executePayment: (subscription: Subscription) => Promise<`0x${string}`>;
   isPaymentDue: (subscription: Subscription) => boolean;
   getTimeUntilNextPayment: (subscription: Subscription) => string;
   refetch: () => void;

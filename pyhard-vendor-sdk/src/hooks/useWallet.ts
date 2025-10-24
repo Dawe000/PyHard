@@ -1,18 +1,21 @@
+'use client';
+
 // Wallet connection hook for PyHard Vendor SDK
 // Supports both Reown AppKit connection and manual address input
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAccount, useWalletClient } from 'wagmi';
+import { useState, useCallback } from 'react';
+import { useAccount, useWalletClient, useConnect } from 'wagmi';
 import { WalletState } from '../types';
 
 export function useWallet() {
   const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
   const { data: walletClient } = useWalletClient();
+  const { connect, connectors } = useConnect();
   
   const [manualAddress, setManualAddress] = useState<string>('');
   const [isManual, setIsManual] = useState(false);
 
-  const address = isManual ? manualAddress : wagmiAddress;
+  const address = isManual ? manualAddress : (wagmiAddress || null);
   const isConnected = isManual ? !!manualAddress : wagmiConnected;
 
   const setManualAddressValue = useCallback((newAddress: string) => {
@@ -22,8 +25,11 @@ export function useWallet() {
 
   const connectWallet = useCallback(() => {
     setIsManual(false);
-    // Wallet connection is handled by Reown AppKit
-  }, []);
+    // Try to connect with the first available connector (usually MetaMask)
+    if (connectors.length > 0) {
+      connect({ connector: connectors[0] });
+    }
+  }, [connect, connectors]);
 
   const disconnect = useCallback(() => {
     if (isManual) {

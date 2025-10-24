@@ -4,7 +4,12 @@
 export * from './components/styled';
 
 // Headless Components
-export * from './components/headless';
+export { 
+  SubscriptionQRGenerator as HeadlessSubscriptionQRGenerator,
+  PaymentQRGenerator as HeadlessPaymentQRGenerator,
+  SubscriptionList as HeadlessSubscriptionList,
+  PaymentHistory as HeadlessPaymentHistory
+} from './components/headless';
 
 // Hooks
 export { useWallet } from './hooks/useWallet';
@@ -13,12 +18,21 @@ export { usePaymentHistory } from './hooks/usePaymentHistory';
 export { usePaymentDetection } from './hooks/usePaymentDetection';
 
 // Utils
-export * from './utils/qrcode';
+export { createSubscriptionQR, createPaymentQR } from './utils/qrcode';
 export * from './utils/blockscout';
-export * from './utils/formatting';
+export { formatTimestamp, formatAmount, formatAddress } from './utils/formatting';
 
 // Types
-export * from './types';
+export type { 
+  Subscription, 
+  PaymentHistory, 
+  QRCodeData, 
+  SubscriptionRequestData, 
+  PaymentRequestData, 
+  PyHardConfig,
+  WalletState,
+  SubscriptionListRenderProps
+} from './types';
 
 // Constants
 export * from './constants';

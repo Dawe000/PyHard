@@ -1,3 +1,5 @@
+'use client';
+
 // Styled wallet connection component for PyHard Vendor SDK
 
 import React from 'react';

@@ -35,7 +35,7 @@ export async function fetchSubscriptions(vendorAddress: string): Promise<Subscri
         return '0x' + topic.slice(26);
       }
       return null;
-    }).filter(addr => addr !== null);
+    }).filter((addr: any) => addr !== null);
 
     console.log(`📊 Found ${smartWalletAddresses.length} smart wallets from factory`);
 

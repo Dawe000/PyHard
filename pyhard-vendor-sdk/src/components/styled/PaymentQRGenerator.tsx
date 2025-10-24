@@ -1,3 +1,5 @@
+'use client';
+
 // Styled payment QR generator component for PyHard Vendor SDK
 
 import React, { useState } from 'react';
