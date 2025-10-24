@@ -3,7 +3,7 @@ import { arbitrumSepolia } from 'viem/chains';
 
 const SMART_WALLET_FACTORY_ADDRESS = "0x884ff7a379192ef709e0d865d52adfa967e1ab94"; // Updated SmartWalletFactory address
 
-interface SubWalletInfo {
+export interface SubWalletInfo {
   childEOA: string;
   spendingLimit: bigint;
   spentThisPeriod: bigint;
@@ -13,7 +13,7 @@ interface SubWalletInfo {
   active: boolean;
 }
 
-interface ParentWalletInfo {
+export interface ParentWalletInfo {
   parentEOA: string;
   smartWalletAddress: string;
   subWalletId: number;

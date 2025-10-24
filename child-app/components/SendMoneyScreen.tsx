@@ -7,17 +7,22 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ParentWalletInfo } from '../services/subWalletDetection';
 import { sendTransaction, validateTransaction } from '../services/transactionService';
 import { trackTransaction } from '../services/contactsService';
+import { saveChildTransaction } from '../services/transactionHistoryService';
 import { UserSearchModal } from './UserSearchModal';
 import { UserProfile, searchUsers } from '../services/userSearchService';
+import { QRScannerScreen } from './QRScannerScreen';
+import { QRCodeData, isPaymentRequest, PaymentRequestData } from '../utils/qrCodeUtils';
 
 interface SendMoneyScreenProps {
   onBack: () => void;
@@ -40,6 +45,7 @@ export const SendMoneyScreen: React.FC<SendMoneyScreenProps> = ({
   const [searchResults, setSearchResults] = useState<UserProfile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Update recipient address when selectedContact changes
   React.useEffect(() => {
@@ -108,6 +114,17 @@ export const SendMoneyScreen: React.FC<SendMoneyScreenProps> = ({
     setShowSearchResults(false);
   };
 
+  const handleQRScanned = (qrData: QRCodeData) => {
+    setShowQRScanner(false);
+    
+    if (isPaymentRequest(qrData)) {
+      const paymentData = qrData.data as PaymentRequestData;
+      setRecipientAddress(paymentData.smartWalletAddress);
+      setAmount(paymentData.amount);
+      setSelectedUser(null);
+    }
+  };
+
   const getRemainingBalance = () => {
     if (!walletInfo) return 0;
     const remaining = walletInfo.subWalletInfo.spendingLimit - walletInfo.subWalletInfo.spentThisPeriod;
@@ -147,6 +164,28 @@ export const SendMoneyScreen: React.FC<SendMoneyScreenProps> = ({
       if (result.success) {
         // Track the transaction for contacts
         await trackTransaction(recipientAddress);
+        
+        // Save transaction to local history using the new service
+        const newTransaction = {
+          hash: result.transactionHash || '0x' + Date.now().toString(16),
+          from: walletInfo.smartWalletAddress,
+          to: recipientAddress,
+          value: String(parseFloat(amount) * 1e6),
+          timeStamp: String(Math.floor(Date.now() / 1000)),
+          type: 'sent' as const,
+          amount: amount,
+        };
+        
+        try {
+          await saveChildTransaction(
+            newTransaction,
+            walletInfo.subWalletInfo.childEOA,
+            walletInfo.smartWalletAddress
+          );
+          console.log('✅ Transaction saved to history');
+        } catch (err) {
+          console.error('❌ Failed to save transaction to history:', err);
+        }
         
         const recipientName = selectedContact?.name || 
                              selectedUser?.display_name || 
@@ -191,327 +230,468 @@ export const SendMoneyScreen: React.FC<SendMoneyScreenProps> = ({
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <LinearGradient
+      colors={['#0a0e27', '#001133', '#0a0e27']}
+      style={styles.container}
+    >
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#333" />
-          </TouchableOpacity>
-          <Text style={styles.title}>Send Money</Text>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Balance Card */}
-          <View style={styles.balanceCard}>
-            <Text style={styles.balanceLabel}>Available Balance</Text>
-            <Text style={styles.balanceAmount}>
-              {getRemainingBalanceDisplay()} PYUSD
-            </Text>
-            <Text style={styles.balanceSubtext}>
-              Monthly Limit: {formatAmount(walletInfo?.subWalletInfo.spendingLimit || 0n)} PYUSD
-            </Text>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>SEND PYUSD</Text>
+            <Text style={styles.headerSubtitle}>Transfer funds to any wallet</Text>
           </View>
 
-          {/* Send Form */}
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Send PYUSD</Text>
-            
-            <View style={styles.inputGroup}>
-              <View style={styles.inputHeader}>
-                <Text style={styles.inputLabel}>Recipient Address</Text>
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={styles.searchButton}
-                    onPress={() => setShowUserSearch(true)}
-                  >
-                    <Ionicons name="search-outline" size={16} color="#007bff" />
-                    <Text style={styles.searchButtonText}>Search</Text>
-                  </TouchableOpacity>
-                  {onOpenContacts && (
-                    <TouchableOpacity
-                      style={styles.contactsButton}
-                      onPress={onOpenContacts}
-                    >
-                      <Ionicons name="people-outline" size={16} color="#007bff" />
-                      <Text style={styles.contactsButtonText}>Contacts</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </View>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Type username or 0x..."
-                value={recipientAddress}
-                onChangeText={handleAddressChange}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="default"
-              />
-              {(selectedContact || selectedUser) && (
-                <Text style={styles.selectedContactText}>
-                  Selected: {selectedContact?.name || selectedUser?.display_name || selectedUser?.username || 'Unknown'}
+          {/* Balance Card */}
+          <View style={styles.balanceSection}>
+            <LinearGradient
+              colors={['rgba(0,121,193,0.15)', 'rgba(0,48,135,0.1)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.balanceGradient}
+            >
+              <View style={styles.balanceContent}>
+                <Text style={styles.balanceLabel}>AVAILABLE BALANCE</Text>
+                <Text style={styles.balanceAmount}>${getRemainingBalanceDisplay()}</Text>
+                <Text style={styles.balanceSubtext}>
+                  LIMIT: ${formatAmount(walletInfo?.subWalletInfo.spendingLimit || 0n)} PYUSD
                 </Text>
-              )}
-
-              {/* Search Results Dropdown */}
-              {showSearchResults && (
-                <View style={styles.searchResultsContainer}>
-                  {isSearching ? (
-                    <View style={styles.searchResultItem}>
-                      <ActivityIndicator size="small" color="#007bff" />
-                      <Text style={styles.searchResultText}>Searching...</Text>
-                    </View>
-                  ) : searchResults.length > 0 ? (
-                    searchResults.slice(0, 3).map((user) => (
-                      <TouchableOpacity
-                        key={user.wallet_address}
-                        style={styles.searchResultItem}
-                        onPress={() => handleSelectUser(user)}
-                      >
-                        <View style={styles.searchResultAvatar}>
-                          <Text style={styles.searchResultAvatarText}>
-                            {user.display_name?.charAt(0).toUpperCase() || user.username?.charAt(0).toUpperCase() || 'U'}
-                          </Text>
-                        </View>
-                        <View style={styles.searchResultInfo}>
-                          <Text style={styles.searchResultName}>
-                            {user.display_name || user.username || 'Unknown'}
-                          </Text>
-                          <Text style={styles.searchResultAddress}>
-                            {user.wallet_address.slice(0, 10)}...{user.wallet_address.slice(-8)}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))
-                  ) : recipientAddress.length >= 2 && !recipientAddress.startsWith('0x') ? (
-                    <View style={styles.searchResultItem}>
-                      <Text style={styles.searchResultText}>No users found</Text>
-                    </View>
-                  ) : null}
-                </View>
-              )}
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Amount (PYUSD)</Text>
-              <View style={styles.amountInputContainer}>
-                <TextInput
-                  style={styles.amountInput}
-                  placeholder="0.00"
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                />
-                <Text style={styles.currencyLabel}>PYUSD</Text>
               </View>
-            </View>
+            </LinearGradient>
+          </View>
 
-            {/* Transaction Summary */}
-            {amount && recipientAddress && (
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Transaction Summary</Text>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>To:</Text>
-                  <Text style={styles.summaryValue}>
-                    {recipientAddress.slice(0, 6)}...{recipientAddress.slice(-4)}
+          {/* Recipient Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.sectionTitle}>RECIPIENT</Text>
+            <LinearGradient
+              colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.inputGradient}
+            >
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="rgba(255,255,255,0.5)" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Username or 0x..."
+                  value={recipientAddress}
+                  onChangeText={handleAddressChange}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <TouchableOpacity onPress={() => setShowQRScanner(true)} style={{ marginRight: 12 }}>
+                  <Ionicons name="qr-code-outline" size={22} color="#0079c1" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowUserSearch(true)}>
+                  <Ionicons name="search" size={20} color="#0079c1" />
+                </TouchableOpacity>
+              </View>
+            </LinearGradient>
+
+            {/* Selected User */}
+            {(selectedContact || selectedUser) && (
+              <View style={styles.selectedUserContainer}>
+                <View style={styles.selectedUserAvatar}>
+                  <Text style={styles.selectedUserAvatarText}>
+                    {(selectedContact?.name || selectedUser?.display_name)?.charAt(0).toUpperCase() || 'U'}
                   </Text>
                 </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Amount:</Text>
-                  <Text style={styles.summaryValue}>{amount} PYUSD</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.summaryLabel}>Remaining:</Text>
-                  <Text style={styles.summaryValue}>
-                    {(getRemainingBalance() - parseFloat(amount || '0')).toFixed(2)} PYUSD
+                <View style={styles.selectedUserInfo}>
+                  <Text style={styles.selectedUserName}>
+                    {selectedContact?.name || selectedUser?.display_name || selectedUser?.username}
+                  </Text>
+                  <Text style={styles.selectedUserAddress}>
+                    {recipientAddress.slice(0, 10)}...{recipientAddress.slice(-8)}
                   </Text>
                 </View>
               </View>
             )}
 
-            <TouchableOpacity
-              style={[
-                styles.sendButton,
-                (!recipientAddress.trim() || !amount.trim() || loading) && styles.sendButtonDisabled
-              ]}
-              onPress={handleSend}
-              disabled={!recipientAddress.trim() || !amount.trim() || loading}
-            >
-              <Ionicons name="send" size={20} color="#fff" />
-              <Text style={styles.sendButtonText}>
-                {loading ? 'Sending...' : 'Send Transaction'}
-              </Text>
-            </TouchableOpacity>
+            {/* Search Results Dropdown */}
+            {showSearchResults && searchResults.length > 0 && (
+              <View style={styles.searchResultsContainer}>
+                {isSearching ? (
+                  <View style={styles.searchLoadingContainer}>
+                    <ActivityIndicator size="small" color="#0079c1" />
+                    <Text style={styles.searchLoadingText}>Searching...</Text>
+                  </View>
+                ) : (
+                  searchResults.slice(0, 3).map((user) => (
+                    <TouchableOpacity
+                      key={user.wallet_address}
+                      style={styles.searchResultItem}
+                      onPress={() => handleSelectUser(user)}
+                    >
+                      <View style={styles.searchResultAvatar}>
+                        <Text style={styles.searchResultAvatarText}>
+                          {user.display_name?.charAt(0).toUpperCase() || user.username?.charAt(0).toUpperCase() || 'U'}
+                        </Text>
+                      </View>
+                      <View style={styles.searchResultInfo}>
+                        <Text style={styles.searchResultName}>
+                          {user.display_name || user.username}
+                        </Text>
+                        <Text style={styles.searchResultAddress}>
+                          {user.wallet_address.slice(0, 10)}...{user.wallet_address.slice(-8)}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
+                    </TouchableOpacity>
+                  ))
+                )}
+              </View>
+            )}
           </View>
-            </ScrollView>
-          </KeyboardAvoidingView>
-          
-          {/* User Search Modal */}
-          <UserSearchModal
-            visible={showUserSearch}
-            onClose={() => setShowUserSearch(false)}
-            onSelectUser={(user) => {
-              setSelectedUser(user);
-            }}
-          />
-        </SafeAreaView>
-      );
-    };
+
+          {/* Amount Input */}
+          <View style={styles.inputSection}>
+            <Text style={styles.sectionTitle}>AMOUNT (PYUSD)</Text>
+            <LinearGradient
+              colors={['rgba(0,121,193,0.15)', 'rgba(0,121,193,0.05)']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.inputGradient}
+            >
+              <View style={styles.inputContainer}>
+                <Text style={styles.currencySymbol}>$</Text>
+                <TextInput
+                  style={[styles.textInput, styles.amountInput]}
+                  placeholder="0.00"
+                  value={amount}
+                  onChangeText={setAmount}
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                  keyboardType="decimal-pad"
+                />
+                <Text style={styles.currencyLabel}>PYUSD</Text>
+              </View>
+            </LinearGradient>
+
+            {/* Quick Amount Buttons */}
+            <View style={styles.quickAmountsGrid}>
+              {[5, 10, 25, 50].map((quickAmount) => (
+                <TouchableOpacity
+                  key={quickAmount}
+                  style={styles.quickAmountButton}
+                  onPress={() => setAmount(quickAmount.toString())}
+                >
+                  <LinearGradient
+                    colors={['rgba(0,121,193,0.2)', 'rgba(0,121,193,0.1)']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.quickAmountGradient}
+                  >
+                    <Text style={styles.quickAmountText}>${quickAmount}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Transaction Summary */}
+          {amount && recipientAddress && (
+            <View style={styles.summarySection}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.summaryGradient}
+              >
+                <View style={styles.summaryContent}>
+                  <Text style={styles.summaryTitle}>TRANSACTION SUMMARY</Text>
+                  
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Recipient</Text>
+                    <Text style={styles.summaryValue}>
+                      {recipientAddress.slice(0, 6)}...{recipientAddress.slice(-4)}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Amount</Text>
+                    <Text style={styles.summaryValue}>${amount}</Text>
+                  </View>
+                  
+                  <View style={styles.divider} />
+                  
+                  <View style={styles.summaryRow}>
+                    <Text style={styles.summaryLabel}>Remaining</Text>
+                    <Text style={[styles.summaryValue, styles.remainingValue]}>
+                      ${(getRemainingBalance() - parseFloat(amount || '0')).toFixed(2)}
+                    </Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+          )}
+
+          {/* Send Button */}
+          <TouchableOpacity
+            style={styles.sendButtonContainer}
+            onPress={handleSend}
+            disabled={!recipientAddress.trim() || !amount.trim() || loading}
+          >
+            <LinearGradient
+              colors={(!recipientAddress.trim() || !amount.trim() || loading) 
+                ? ['rgba(0,121,193,0.3)', 'rgba(0,121,193,0.2)']
+                : ['#0079c1', '#00a8e8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.sendButtonGradient}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="send" size={20} color="#fff" />
+                  <Text style={styles.sendButtonText}>SEND TRANSACTION</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+      
+      {/* User Search Modal */}
+      <UserSearchModal
+        visible={showUserSearch}
+        onClose={() => setShowUserSearch(false)}
+        onSelectUser={(user) => {
+          setSelectedUser(user);
+        }}
+      />
+
+      {/* QR Scanner Modal */}
+      <Modal
+        visible={showQRScanner}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowQRScanner(false)}
+      >
+        <QRScannerScreen
+          onQRScanned={handleQRScanned}
+          onClose={() => setShowQRScanner(false)}
+        />
+      </Modal>
+    </LinearGradient>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f2f5',
   },
   keyboardView: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    marginRight: 15,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  content: {
+  scrollView: {
     flex: 1,
-    padding: 20,
   },
-  balanceCard: {
-    backgroundColor: '#007bff',
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  header: {
+    marginBottom: 24,
+    marginTop: 20,
+  },
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  balanceSection: {
+    marginBottom: 24,
+  },
+  balanceGradient: {
     borderRadius: 16,
+    padding: 1,
+  },
+  balanceContent: {
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 15,
     padding: 20,
-    marginBottom: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
   },
   balanceLabel: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 11,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 2,
     marginBottom: 8,
   },
   balanceAmount: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 36,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   balanceSubtext: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace',
   },
-  formCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  inputSection: {
+    marginBottom: 24,
   },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  inputHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
     marginBottom: 8,
+    marginLeft: 4,
   },
-  buttonRow: {
+  inputGradient: {
+    borderRadius: 12,
+    padding: 1,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10,14,39,0.8)',
+    borderRadius: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.2)',
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
+  },
+  currencySymbol: {
+    fontSize: 20,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+  },
+  amountInput: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  currencyLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '600',
+  },
+  quickAmountsGrid: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 12,
   },
-  searchButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#f0f8ff',
-    borderRadius: 6,
+  quickAmountButton: {
+    flex: 1,
   },
-  searchButtonText: {
-    fontSize: 12,
-    color: '#007bff',
-    marginLeft: 4,
-    fontWeight: '600',
+  quickAmountGradient: {
+    borderRadius: 8,
+    padding: 1,
   },
-  inputLabel: {
+  quickAmountText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#0079c1',
+    textAlign: 'center',
+    paddingVertical: 10,
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(0,121,193,0.3)',
   },
-  contactsButton: {
+  selectedUserContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    backgroundColor: '#f0f8ff',
-    borderRadius: 6,
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: 'rgba(0,121,193,0.1)',
+    borderRadius: 8,
+    gap: 12,
   },
-  contactsButtonText: {
-    fontSize: 12,
-    color: '#007bff',
-    marginLeft: 4,
+  selectedUserAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,121,193,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedUserAvatarText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0079c1',
+  },
+  selectedUserInfo: {
+    flex: 1,
+  },
+  selectedUserName: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  selectedContactText: {
-    fontSize: 12,
-    color: '#007bff',
-    marginTop: 4,
-    fontStyle: 'italic',
+  selectedUserAddress: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.6)',
+    fontFamily: 'monospace',
   },
   searchResultsContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    marginTop: 8,
+    backgroundColor: 'rgba(10,14,39,0.9)',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    marginTop: 4,
-    maxHeight: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderColor: 'rgba(0,121,193,0.3)',
+    overflow: 'hidden',
+  },
+  searchLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    gap: 12,
+  },
+  searchLoadingText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
   },
   searchResultItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
+    gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
   searchResultAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#007bff',
+    backgroundColor: 'rgba(0,121,193,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
   },
   searchResultAvatarText: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#0079c1',
   },
   searchResultInfo: {
     flex: 1,
@@ -519,88 +699,75 @@ const styles = StyleSheet.create({
   searchResultName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
     marginBottom: 2,
   },
   searchResultAddress: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
     fontFamily: 'monospace',
   },
-  searchResultText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    padding: 12,
+  summarySection: {
+    marginBottom: 24,
   },
-  textInput: {
+  summaryGradient: {
+    borderRadius: 16,
+    padding: 1,
+  },
+  summaryContent: {
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 15,
+    padding: 20,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#f8f9fa',
-  },
-  amountInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    backgroundColor: '#f8f9fa',
-  },
-  amountInput: {
-    flex: 1,
-    padding: 12,
-    fontSize: 16,
-  },
-  currencyLabel: {
-    paddingHorizontal: 12,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#666',
-  },
-  summaryCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderColor: 'rgba(255,255,255,0.1)',
   },
   summaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 1,
+    marginBottom: 16,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 4,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#666',
+    color: 'rgba(255,255,255,0.6)',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: '#FFFFFF',
+    fontFamily: 'monospace',
   },
-  sendButton: {
-    backgroundColor: '#007bff',
+  remainingValue: {
+    color: '#0079c1',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    marginVertical: 12,
+  },
+  sendButtonContainer: {
+    marginTop: 8,
+  },
+  sendButtonGradient: {
     borderRadius: 12,
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
-  sendButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
   sendButtonText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
 });

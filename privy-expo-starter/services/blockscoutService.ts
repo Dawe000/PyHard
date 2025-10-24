@@ -190,6 +190,37 @@ export async function getPYUSDTransfers(
 }
 
 /**
+ * Get PYUSD transfers using v2 API (better for smart contracts)
+ */
+export async function getPYUSDTransfersV2(
+  address: string
+): Promise<any[]> {
+  try {
+    console.log('🪙 Blockscout v2: Fetching PYUSD transfers for', address);
+
+    const url = `https://arbitrum-sepolia.blockscout.com/api/v2/addresses/${address}/token-transfers?type=ERC-20&token=${PYUSD_CONTRACT_ADDRESS}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`Blockscout API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.items || data.items.length === 0) {
+      console.log('⚠️ Blockscout v2: No PYUSD transfers found');
+      return [];
+    }
+
+    console.log('✅ Blockscout v2: Found', data.items.length, 'PYUSD transfers');
+    return data.items;
+  } catch (error) {
+    console.error('❌ Blockscout v2: Error fetching PYUSD transfers:', error);
+    return [];
+  }
+}
+
+/**
  * Get internal transactions (contract calls)
  */
 export async function getInternalTransactions(

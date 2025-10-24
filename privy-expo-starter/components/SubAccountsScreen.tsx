@@ -8,7 +8,10 @@ import {
   TextInput,
   Modal,
   RefreshControl,
-  Keyboard
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { YStack, XStack, Text } from "tamagui";
@@ -34,14 +37,17 @@ export const SubAccountsScreen = () => {
   const [showManageModal, setShowManageModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<ChildAccount | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [newAccountName, setNewAccountName] = useState('');
   const [newAccountType, setNewAccountType] = useState<'saver' | 'sub_account'>('saver');
   const [newLimit, setNewLimit] = useState('');
   const [subAccounts, setSubAccounts] = useState<ChildAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<ChildAccount | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTx, setLoadingTx] = useState(false);
 
   // Fetch child accounts from smart contract
   const fetchChildAccounts = async () => {
@@ -229,8 +235,9 @@ export const SubAccountsScreen = () => {
   const handleEditLimit = () => {
     if (!selectedAccount) return;
     setNewLimit(((selectedAccount as any).limit_display || '0.00').toString());
-    setShowEditModal(true);
     setShowManageModal(false);
+    // Delay to allow manage modal to close first
+    setTimeout(() => setShowEditModal(true), 300);
   };
 
   const handleDeleteAccount = () => {
@@ -313,6 +320,43 @@ export const SubAccountsScreen = () => {
       Alert.alert("Error", `Failed to update limit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleViewHistory = async (childAccount: ChildAccount) => {
+    setSelectedAccount(childAccount);
+    setShowHistoryModal(true);
+    setLoadingTx(true);
+
+    try {
+      const { getPYUSDTransfersV2 } = await import('@/services/blockscoutService');
+
+      console.log('🔍 Fetching transactions for child:', childAccount.child_eoa);
+      console.log('📍 Parent smart wallet:', childAccount.parent_wallet);
+
+      // Fetch all transfers from the parent smart wallet using v2 API
+      const allTransfers = await getPYUSDTransfersV2(childAccount.parent_wallet);
+
+      console.log('✅ Found', allTransfers.length, 'total smart wallet transactions');
+
+      // Filter for transactions where this child was involved
+      // In v2 API, check from.hash and to.hash
+      const childTransfers = allTransfers.filter(tx => {
+        const fromAddr = tx.from?.hash?.toLowerCase();
+        const toAddr = tx.to?.hash?.toLowerCase();
+        const childAddr = childAccount.child_eoa.toLowerCase();
+
+        return fromAddr === childAddr || toAddr === childAddr;
+      });
+
+      console.log('✅ Filtered to', childTransfers.length, 'child transactions');
+
+      setTransactions(childTransfers.slice(0, 20));
+    } catch (error) {
+      console.error('❌ Error fetching transactions:', error);
+      setTransactions([]);
+    } finally {
+      setLoadingTx(false);
     }
   };
 
@@ -465,18 +509,10 @@ export const SubAccountsScreen = () => {
             </XStack>
             <XStack justifyContent="space-between" alignItems="center">
               <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Child EOA
+                &gt; Child Wallet Address
               </Text>
               <Text fontSize={12} fontWeight="600" color="#0079c1" fontFamily="SpaceMono_400Regular">
                 {childAccount.child_eoa.slice(0, 6)}...{childAccount.child_eoa.slice(-4)}
-              </Text>
-            </XStack>
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
-                &gt; Full EOA
-              </Text>
-              <Text fontSize={12} fontWeight="600" color="#0079c1" fontFamily="SpaceMono_400Regular">
-                {childAccount.child_eoa}
               </Text>
             </XStack>
           </YStack>
@@ -498,20 +534,7 @@ export const SubAccountsScreen = () => {
             </TouchableOpacity>
             <TouchableOpacity
               style={{ flex: 1 }}
-              onPress={() => Alert.alert("Coming Soon", "Fund feature coming soon!")}
-            >
-              <YStack backgroundColor="rgba(52,199,89,0.15)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
-                <XStack alignItems="center" gap={6}>
-                  <Ionicons name="add-outline" size={16} color="#34C759" />
-                  <Text fontSize={11} fontWeight="600" color="#34C759" fontFamily="SpaceGrotesk_600SemiBold">
-                    FUND
-                  </Text>
-                </XStack>
-              </YStack>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              onPress={() => Alert.alert("Coming Soon", "View transactions coming soon!")}
+              onPress={() => handleViewHistory(childAccount)}
             >
               <YStack backgroundColor="rgba(255,255,255,0.1)" paddingVertical={10} paddingHorizontal={12} borderRadius={8} alignItems="center">
                 <XStack alignItems="center" gap={6}>
@@ -804,92 +827,99 @@ export const SubAccountsScreen = () => {
       {/* Edit Limit Modal */}
       <Modal
         visible={showEditModal}
-        transparent={true}
+        transparent={false}
         animationType="slide"
         onRequestClose={() => setShowEditModal(false)}
       >
-        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
-          <TouchableOpacity 
-            style={{ flex: 1 }} 
-            activeOpacity={1} 
-            onPress={() => setShowEditModal(false)}
-          />
-          <YStack
-            backgroundColor="#0a0e27"
-            borderTopLeftRadius={20}
-            borderTopRightRadius={20}
-            paddingTop={20}
-            maxHeight="80%"
+        <SafeAreaView style={styles.container}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={{ flex: 1 }}
           >
-            <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
-              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
-                EDIT ALLOWANCE
-              </Text>
-              <TouchableOpacity onPress={() => setShowEditModal(false)}>
-                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
-              </TouchableOpacity>
-            </XStack>
-
-            <ScrollView 
-              contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              <YStack marginBottom={20}>
-                <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
-                  NEW MONTHLY LIMIT (PYUSD)
+            <YStack flex={1}>
+              {/* Header */}
+              <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} paddingVertical={20}>
+                <Text fontSize={24} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                  EDIT ALLOWANCE
                 </Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={newLimit}
-                  onChangeText={setNewLimit}
-                  placeholder="Enter new limit"
-                  placeholderTextColor="rgba(255,255,255,0.3)"
-                  keyboardType="numeric"
-                  returnKeyType="done"
-                  onSubmitEditing={() => {
-                    // Dismiss keyboard when done is pressed
-                    Keyboard.dismiss();
-                  }}
-                />
-              </YStack>
-            </ScrollView>
+                <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                  <Ionicons name="close" size={28} color="rgba(255,255,255,0.7)" />
+                </TouchableOpacity>
+              </XStack>
 
-            <XStack paddingHorizontal={20} paddingBottom={20} gap={8}>
-              <TouchableOpacity
+              <ScrollView
                 style={{ flex: 1 }}
-                onPress={() => setShowEditModal(false)}
-                disabled={actionLoading}
+                contentContainerStyle={{ paddingHorizontal: 20 }}
+                keyboardShouldPersistTaps="handled"
               >
-                <YStack paddingVertical={16} alignItems="center">
-                  <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.5)" fontFamily="SpaceGrotesk_600SemiBold">
-                    CANCEL
-                  </Text>
-                </YStack>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                onPress={handleUpdateLimit}
-                disabled={actionLoading}
-              >
-                <YStack backgroundColor="#0079c1" paddingVertical={16} alignItems="center" borderRadius={12}>
-                  {actionLoading ? (
-                    <XStack alignItems="center" gap={8}>
-                      <Ionicons name="hourglass-outline" size={16} color="#FFFFFF" />
-                      <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                        UPDATING...
-                      </Text>
-                    </XStack>
-                  ) : (
-                    <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
-                      UPDATE
+                {selectedAccount && (
+                  <YStack marginBottom={24}>
+                    <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8}>
+                      {selectedAccount.child_name}
                     </Text>
-                  )}
+                    <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular" marginBottom={16}>
+                      {selectedAccount.child_eoa.slice(0, 10)}...{selectedAccount.child_eoa.slice(-8)}
+                    </Text>
+                    <Text fontSize={14} color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_400Regular">
+                      Current Limit: {(selectedAccount as any).limit_display || '0.00'} PYUSD
+                    </Text>
+                  </YStack>
+                )}
+
+                <YStack marginBottom={24}>
+                  <Text fontSize={14} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold" marginBottom={8} letterSpacing={0.5}>
+                    NEW MONTHLY LIMIT (PYUSD)
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newLimit}
+                    onChangeText={setNewLimit}
+                    placeholder="Enter new limit"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    keyboardType="numeric"
+                    returnKeyType="done"
+                    autoFocus
+                  />
                 </YStack>
-              </TouchableOpacity>
-            </XStack>
-          </YStack>
-        </YStack>
+              </ScrollView>
+
+              {/* Bottom Buttons */}
+              <XStack paddingHorizontal={20} paddingVertical={20} gap={8}>
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  onPress={() => setShowEditModal(false)}
+                  disabled={actionLoading}
+                >
+                  <YStack paddingVertical={16} alignItems="center" borderRadius={12} borderWidth={1} borderColor="rgba(255,255,255,0.2)">
+                    <Text fontSize={16} fontWeight="600" color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold">
+                      CANCEL
+                    </Text>
+                  </YStack>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={{ flex: 1 }}
+                  onPress={handleUpdateLimit}
+                  disabled={actionLoading}
+                >
+                  <YStack backgroundColor="#0079c1" paddingVertical={16} alignItems="center" borderRadius={12}>
+                    {actionLoading ? (
+                      <XStack alignItems="center" gap={8}>
+                        <Ionicons name="hourglass-outline" size={16} color="#FFFFFF" />
+                        <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                          UPDATING...
+                        </Text>
+                      </XStack>
+                    ) : (
+                      <Text fontSize={16} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                        UPDATE
+                      </Text>
+                    )}
+                  </YStack>
+                </TouchableOpacity>
+              </XStack>
+            </YStack>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </Modal>
 
       {/* Delete Confirmation Modal */}
@@ -978,6 +1008,109 @@ export const SubAccountsScreen = () => {
                 </YStack>
               </TouchableOpacity>
             </XStack>
+          </YStack>
+        </YStack>
+      </Modal>
+
+      {/* History Modal */}
+      <Modal
+        visible={showHistoryModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowHistoryModal(false)}
+      >
+        <YStack flex={1} backgroundColor="rgba(0, 0, 0, 0.7)" justifyContent="flex-end">
+          <YStack
+            backgroundColor="#0a0e27"
+            borderTopLeftRadius={20}
+            borderTopRightRadius={20}
+            paddingTop={20}
+            maxHeight="80%"
+          >
+            <XStack justifyContent="space-between" alignItems="center" paddingHorizontal={20} marginBottom={20}>
+              <Text fontSize={20} fontWeight="700" color="#FFFFFF" fontFamily="SpaceGrotesk_700Bold">
+                TRANSACTION HISTORY
+              </Text>
+              <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                <Ionicons name="close" size={24} color="rgba(255,255,255,0.7)" />
+              </TouchableOpacity>
+            </XStack>
+
+            {selectedAccount && (
+              <YStack paddingHorizontal={20} marginBottom={12}>
+                <Text fontSize={14} color="rgba(255,255,255,0.7)" fontFamily="SpaceGrotesk_600SemiBold">
+                  {selectedAccount.child_name}
+                </Text>
+                <Text fontSize={12} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                  {selectedAccount.child_eoa.slice(0, 10)}...{selectedAccount.child_eoa.slice(-8)}
+                </Text>
+              </YStack>
+            )}
+
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}>
+              {loadingTx ? (
+                <YStack alignItems="center" paddingVertical={40}>
+                  <Ionicons name="hourglass-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={12}>
+                    Loading transactions...
+                  </Text>
+                </YStack>
+              ) : transactions.length === 0 ? (
+                <YStack alignItems="center" paddingVertical={40}>
+                  <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text fontSize={14} color="rgba(255,255,255,0.6)" fontFamily="SpaceGrotesk_600SemiBold" marginTop={12}>
+                    No transactions yet
+                  </Text>
+                </YStack>
+              ) : (
+                transactions.map((tx: any, index) => {
+                  const isSent = tx.from?.hash?.toLowerCase() === selectedAccount?.child_eoa.toLowerCase();
+                  const amount = tx.total?.value ? (parseFloat(tx.total.value) / 1000000).toFixed(2) : '0.00';
+                  const otherParty = isSent ? tx.to?.hash : tx.from?.hash;
+                  const timestamp = tx.timestamp ? new Date(tx.timestamp).toLocaleDateString() : 'Unknown';
+
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => Alert.alert('Transaction', `Hash: ${tx.tx_hash}\nView on Arbiscan`)}
+                    >
+                      <YStack
+                        backgroundColor="rgba(255,255,255,0.05)"
+                        borderRadius={12}
+                        padding={16}
+                        marginBottom={12}
+                        borderWidth={1}
+                        borderColor="rgba(0,121,193,0.2)"
+                      >
+                        <XStack justifyContent="space-between" marginBottom={8}>
+                          <XStack alignItems="center" gap={8}>
+                            <Ionicons
+                              name={isSent ? "arrow-up-circle" : "arrow-down-circle"}
+                              size={20}
+                              color={isSent ? "#FF9500" : "#34C759"}
+                            />
+                            <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceGrotesk_600SemiBold">
+                              {isSent ? "Sent" : "Received"}
+                            </Text>
+                          </XStack>
+                          <Text fontSize={14} fontWeight="600" color="#FFFFFF" fontFamily="SpaceMono_400Regular">
+                            {amount} PYUSD
+                          </Text>
+                        </XStack>
+                        <XStack justifyContent="space-between" alignItems="center">
+                          <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                            {isSent ? `To: ${otherParty?.slice(0, 10)}...` : `From: ${otherParty?.slice(0, 10)}...`}
+                          </Text>
+                          <Text fontSize={11} color="rgba(255,255,255,0.5)" fontFamily="SpaceMono_400Regular">
+                            {timestamp}
+                          </Text>
+                        </XStack>
+                      </YStack>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </ScrollView>
           </YStack>
         </YStack>
       </Modal>
