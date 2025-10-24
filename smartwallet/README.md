@@ -352,7 +352,6 @@ npx hardhat verify --network sepolia <contract_address>
 ## 🔮 Future Enhancements
 
 ### Planned Features
-- **Multi-chain Support**: Support for additional chains
 - **Advanced Analytics**: Enhanced analytics and monitoring
 - **Gas Optimization**: Further gas optimizations
 - **Security Audits**: Professional security audits
@@ -360,5 +359,4 @@ npx hardhat verify --network sepolia <contract_address>
 ### Protocol Upgrades
 - **EIP-7702**: Full EIP-7702 implementation
 - **Account Abstraction**: Enhanced account abstraction
-- **Cross-chain**: Improved cross-chain functionality
 - **Security**: Enhanced security features
