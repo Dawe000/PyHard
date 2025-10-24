@@ -71,8 +71,10 @@ export async function GET(request: Request) {
 
         console.log(`📋 Smart wallet has ${subscriptionCount} subscriptions`);
 
-        // Check each subscription
-        for (let i = 1; i <= Number(subscriptionCount); i++) {
+        // Check each subscription - also check a few more IDs in case there are gaps
+        const maxCheck = Math.max(Number(subscriptionCount), 5);
+        console.log(`📋 Checking subscriptions 1 to ${maxCheck} (count was ${subscriptionCount})`);
+        for (let i = 1; i <= maxCheck; i++) {
           try {
             const subscription = await publicClient.readContract({
               address: smartWalletAddress as `0x${string}`,
@@ -93,6 +95,17 @@ export async function GET(request: Request) {
               args: [BigInt(i)]
             }) as [string, bigint, bigint, bigint, boolean];
 
+            // Debug: Log subscription details
+            console.log(`📊 Subscription ${i} from smart contract:`, {
+              vendor: subscription[0],
+              requestedVendor: vendor,
+              vendorMatch: subscription[0].toLowerCase() === vendor.toLowerCase(),
+              active: subscription[4],
+              amount: subscription[1].toString(),
+              interval: subscription[2].toString(),
+              lastPayment: subscription[3].toString()
+            });
+
             // Check if this subscription is for our vendor and is active
             if (subscription[0].toLowerCase() === vendor.toLowerCase() && subscription[4]) {
               console.log(`✅ Found active subscription ${i} for vendor ${vendor}`);
@@ -105,6 +118,8 @@ export async function GET(request: Request) {
                 lastPayment: subscription[3].toString(),
                 active: subscription[4]
               });
+            } else if (subscription[0].toLowerCase() === vendor.toLowerCase() && !subscription[4]) {
+              console.log(`⚠️ Found INACTIVE subscription ${i} for vendor ${vendor} - this might be the issue!`);
             }
           } catch (subError) {
             console.warn(`⚠️ Error reading subscription ${i} from ${smartWalletAddress}:`, subError);
