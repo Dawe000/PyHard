@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { generateChildWallet, saveChildWallet, ChildWallet } from '../utils/crypto';
 import { createSubAccountRequestQR, encodeQRData, QRCodeData } from '../utils/qrCodeUtils';
 
@@ -45,15 +46,21 @@ export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ onQRGenerate
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient
+      colors={['#0a0e27', '#001133', '#0a0e27']}
+      style={styles.container}
+    >
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="wallet" size={80} color="#1976d2" />
+          <Image 
+            source={require('../assets/pyhard_silver.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
 
-        <Text style={styles.title}>Welcome!</Text>
         <Text style={styles.subtitle}>
-          Let's set up your digital wallet so you can receive money from your parents.
+          &gt; Set up your wallet to receive PYUSD from your parents
         </Text>
 
         <View style={styles.form}>
@@ -85,14 +92,13 @@ export const GetStartedScreen: React.FC<GetStartedScreenProps> = ({ onQRGenerate
           </Text>
         </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
@@ -101,64 +107,62 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 32,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 12,
+  logo: {
+    width: 200,
+    height: 200,
   },
   subtitle: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.6)',
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
     marginBottom: 40,
+    paddingHorizontal: 20,
   },
   form: {
     marginBottom: 30,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: 'rgba(0,121,193,0.3)',
+    borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    color: '#FFFFFF',
   },
   button: {
-    backgroundColor: '#1976d2',
+    backgroundColor: '#0079c1',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     marginBottom: 20,
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: 'rgba(0,121,193,0.5)',
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   info: {
-    backgroundColor: '#e3f2fd',
-    padding: 16,
-    borderRadius: 8,
+    alignItems: 'center',
   },
   infoText: {
-    fontSize: 14,
-    color: '#1976d2',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.4)',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
 });
