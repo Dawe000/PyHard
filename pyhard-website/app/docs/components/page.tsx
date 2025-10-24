@@ -1,6 +1,7 @@
 import React from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { CheckCircle2, ArrowRight, Eye, Code } from 'lucide-react';
+import { DocsLayout } from '@/components/DocsLayout';
 
 export const runtime = 'edge';
 
@@ -140,17 +141,7 @@ function CustomSubscriptionForm() {
   ];
 
   return (
-    <div className="pt-24 pb-20 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold text-white mb-4">
-            Components
-          </h1>
-          <p className="text-xl text-gray-400">
-            Styled and headless components for PyHard integration
-          </p>
-        </div>
+    <DocsLayout title="Components" description="Styled and headless components for PyHard integration">
 
         {/* Component Types */}
         <section className="mb-12">
@@ -206,13 +197,13 @@ function CustomSubscriptionForm() {
         </section>
 
         {/* Styled Components */}
-        <section className="mb-12">
+        <section id="styled-components" className="mb-12">
           <h2 className="text-3xl font-space-grotesk font-bold text-white mb-8">
             Styled Components
           </h2>
           <div className="space-y-8">
             {components.map((component, index) => (
-              <div key={index} className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-xl p-6 backdrop-blur-sm">
+              <div key={index} id={component.name.toLowerCase()} className="bg-gradient-to-br from-white/10 to-white/5 border border-white/20 rounded-xl p-6 backdrop-blur-sm">
                 <div className="mb-6">
                   <h3 className="text-2xl font-semibold text-white mb-2">
                     {component.name}
@@ -389,7 +380,6 @@ function CustomSubscriptionForm() {
             </div>
           </div>
         </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 }

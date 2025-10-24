@@ -1,6 +1,7 @@
 import React from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { ArrowRight, CheckCircle2, ExternalLink } from 'lucide-react';
+import { DocsLayout } from '@/components/DocsLayout';
 
 export const runtime = 'edge';
 
@@ -127,17 +128,7 @@ const formattedAddress = formatAddress('0x1234...5678'); // "0x1234...5678"
 const formattedInterval = formatInterval(2592000); // "30 days"`;
 
   return (
-    <div className="pt-24 pb-20 min-h-screen">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold text-white mb-4">
-            API Documentation
-          </h1>
-          <p className="text-xl text-gray-400">
-            Complete reference for the PyHard Vendor SDK
-          </p>
-        </div>
+    <DocsLayout title="API Documentation" description="Complete reference for the PyHard Vendor SDK">
 
         {/* Installation */}
         <section className="mb-12">
@@ -285,7 +276,6 @@ const formattedInterval = formatInterval(2592000); // "30 days"`;
             </div>
           </div>
         </section>
-      </div>
-    </div>
+    </DocsLayout>
   );
 }

@@ -1,6 +1,6 @@
 {
   "name": "pyhard-vendor-sdk",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React SDK for integrating PyHard subscriptions and payments",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

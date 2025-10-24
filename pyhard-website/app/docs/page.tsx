@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowRight, Book, Code, Zap, Package } from 'lucide-react';
 import { CodeBlock } from '@/components/CodeBlock';
+import { DocsLayout } from '@/components/DocsLayout';
 
 export const runtime = 'edge';
 
@@ -57,17 +58,7 @@ function App() {
   ];
 
   return (
-    <div className="pt-24 pb-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-12">
-          <h1 className="text-4xl md:text-5xl font-space-grotesk font-bold text-white mb-4">
-            Documentation
-          </h1>
-          <p className="text-xl text-gray-400 max-w-3xl">
-            Everything you need to integrate PyHard subscriptions into your application
-          </p>
-        </div>
+    <DocsLayout title="Documentation" description="Everything you need to integrate PyHard subscriptions into your application">
 
         {/* Quick Links */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
@@ -182,7 +173,6 @@ function App() {
             </Link>
           </div>
         </div>
-      </div>
-    </div>
+    </DocsLayout>
   );
 }
