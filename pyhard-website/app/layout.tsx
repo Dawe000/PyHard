@@ -5,6 +5,7 @@ import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { PyHardProvider } from 'pyhard-vendor-sdk';
 import { headers } from 'next/headers';
+import { ConditionalFooter } from "@/components/ConditionalFooter";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -39,7 +40,7 @@ export default async function RootLayout({
           <main>
             {children}
           </main>
-          <Footer />
+          <ConditionalFooter />
         </PyHardProvider>
       </body>
     </html>

@@ -1,0 +1,1114 @@
+{
+  "overview": {
+    "title": "Documentation",
+    "description": "Everything you need to integrate PyHard subscriptions into your application",
+    "content": [
+      {
+        "type": "hero",
+        "title": "Get Started",
+        "description": "Installation, setup, and your first component",
+        "icon": "monitor",
+        "link": "/docs/getting-started"
+      },
+      {
+        "type": "hero",
+        "title": "Components",
+        "description": "Styled and headless component reference",
+        "icon": "cube",
+        "link": "/docs/components"
+      },
+      {
+        "type": "hero",
+        "title": "Hooks",
+        "description": "Custom hooks for wallet, subscriptions, and payments",
+        "icon": "code",
+        "link": "/docs/hooks"
+      },
+      {
+        "type": "hero",
+        "title": "Examples",
+        "description": "Complete examples and use cases",
+        "icon": "zap",
+        "link": "/docs/examples"
+      }
+    ]
+  },
+  "getting-started": {
+    "title": "Getting Started",
+    "description": "Install PyHard and create your first subscription",
+    "content": [
+      {
+        "type": "section",
+        "title": "Installation",
+        "content": [
+          {
+            "type": "code",
+            "language": "bash",
+            "code": "npm install pyhard-vendor-sdk\n# or\nyarn add pyhard-vendor-sdk\n# or\npnpm add pyhard-vendor-sdk"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Quick Start",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { \n  PyHardProvider,\n  WalletConnect,\n  SubscriptionQRGenerator \n} from 'pyhard-vendor-sdk';\n\nfunction MyApp() {\n  return (\n    <PyHardProvider>\n      <WalletConnect />\n      <SubscriptionQRGenerator \n        onQRGenerated={(qrData) => {\n          console.log('QR Generated:', qrData);\n        }}\n      />\n    </PyHardProvider>\n  );\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Configuration",
+        "content": [
+          {
+            "type": "text",
+            "content": "Configure your PyHard provider with the necessary settings for your application."
+          },
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { PyHardProvider } from 'pyhard-vendor-sdk';\n\nfunction App() {\n  return (\n    <PyHardProvider\n      projectId=\"your-project-id\"\n      chainId={421614}\n      paymasterUrl=\"https://your-paymaster.workers.dev\"\n    >\n      {/* Your app components */}\n    </PyHardProvider>\n  );\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "components": {
+    "title": "Components",
+    "description": "Styled and headless components for PyHard integration",
+    "content": [
+      {
+        "type": "hero",
+        "title": "WalletConnect",
+        "description": "Connect user wallets with Reown AppKit integration",
+        "icon": "monitor",
+        "link": "/docs/components/walletconnect"
+      },
+      {
+        "type": "hero",
+        "title": "SubscriptionQRGenerator",
+        "description": "Generate QR codes for subscription requests",
+        "icon": "code",
+        "link": "/docs/components/subscriptionqrgenerator"
+      },
+      {
+        "type": "hero",
+        "title": "PaymentQRGenerator",
+        "description": "Generate QR codes for payment requests",
+        "icon": "code",
+        "link": "/docs/components/paymentqrgenerator"
+      },
+      {
+        "type": "hero",
+        "title": "SubscriptionList",
+        "description": "Display and manage subscriptions",
+        "icon": "monitor",
+        "link": "/docs/components/subscriptionlist"
+      },
+      {
+        "type": "hero",
+        "title": "PaymentHistory",
+        "description": "Display payment history for a subscription",
+        "icon": "monitor",
+        "link": "/docs/components/paymenthistory"
+      }
+    ]
+  },
+  "components/walletconnect": {
+    "title": "WalletConnect",
+    "description": "Connect user wallets with Reown AppKit integration",
+    "content": [
+      {
+        "type": "component",
+        "name": "WalletConnect",
+        "description": "Connect user wallets with Reown AppKit integration",
+        "props": [
+          {
+            "name": "showManualInput",
+            "type": "boolean",
+            "default": "true",
+            "description": "Show manual address input option"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { WalletConnect } from 'pyhard-vendor-sdk';\n\nfunction MyComponent() {\n  return (\n    <WalletConnect \n      showManualInput={false}\n    />\n  );\n}"
+        }
+      },
+      {
+        "type": "component",
+        "name": "SubscriptionQRGenerator",
+        "description": "Generate QR codes for subscription requests",
+        "props": [
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction CreateSubscription() {\n  return (\n    <SubscriptionQRGenerator \n      onQRGenerated={(qrData) => {\n        console.log('QR Code:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      },
+      {
+        "type": "component",
+        "name": "PaymentQRGenerator",
+        "description": "Generate QR codes for payment requests",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription to pay for"
+          },
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction RequestPayment() {\n  return (\n    <PaymentQRGenerator \n      subscriptionId=\"123\"\n      onQRGenerated={(qrData) => {\n        console.log('Payment QR:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      },
+      {
+        "type": "component",
+        "name": "SubscriptionList",
+        "description": "Display and manage subscriptions",
+        "props": [
+          {
+            "name": "vendorAddress",
+            "type": "string",
+            "description": "Vendor wallet address"
+          },
+          {
+            "name": "onPaymentExecuted",
+            "type": "(subscriptionId: string, txHash: string) => void",
+            "description": "Callback when payment is executed"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionList } from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  return (\n    <SubscriptionList \n      vendorAddress=\"0x...\"\n      onPaymentExecuted={(id, hash) => {\n        console.log('Payment executed:', id, hash);\n      }}\n    />\n  );\n}"
+        }
+      },
+      {
+        "type": "component",
+        "name": "PaymentHistory",
+        "description": "Display payment history for a subscription",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentHistory } from 'pyhard-vendor-sdk';\n\nfunction SubscriptionDetails() {\n  return (\n    <PaymentHistory \n      subscriptionId=\"123\"\n      smartWalletAddress=\"0x...\"\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "hooks": {
+    "title": "Hooks",
+    "description": "Custom hooks for wallet, subscriptions, and payments",
+    "content": [
+      {
+        "type": "hook",
+        "name": "useWallet",
+        "description": "Manage wallet connection state",
+        "returns": [
+          {
+            "name": "address",
+            "type": "string | null",
+            "description": "Connected wallet address"
+          },
+          {
+            "name": "isConnected",
+            "type": "boolean",
+            "description": "Whether wallet is connected"
+          },
+          {
+            "name": "connect",
+            "type": "() => void",
+            "description": "Connect wallet function"
+          },
+          {
+            "name": "disconnect",
+            "type": "() => void",
+            "description": "Disconnect wallet function"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { useWallet } from 'pyhard-vendor-sdk';\n\nfunction MyComponent() {\n  const { address, isConnected, connect, disconnect } = useWallet();\n\n  return (\n    <div>\n      {isConnected ? (\n        <div>\n          <p>Connected: {address}</p>\n          <button onClick={disconnect}>Disconnect</button>\n        </div>\n      ) : (\n        <button onClick={connect}>Connect Wallet</button>\n      )}\n    </div>\n  );\n}"
+        }
+      },
+      {
+        "type": "hook",
+        "name": "useSubscriptions",
+        "description": "Fetch and manage subscriptions",
+        "params": [
+          {
+            "name": "vendorAddress",
+            "type": "string",
+            "description": "Vendor wallet address"
+          }
+        ],
+        "returns": [
+          {
+            "name": "subscriptions",
+            "type": "Subscription[]",
+            "description": "Array of subscriptions"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "description": "Loading state"
+          },
+          {
+            "name": "error",
+            "type": "string | null",
+            "description": "Error message if any"
+          },
+          {
+            "name": "executePayment",
+            "type": "(subscription: Subscription) => Promise<string>",
+            "description": "Execute payment for subscription"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { useSubscriptions } from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  const { \n    subscriptions, \n    loading, \n    error, \n    executePayment \n  } = useSubscriptions('0x...');\n\n  if (loading) return <div>Loading...</div>;\n  if (error) return <div>Error: {error}</div>;\n\n  return (\n    <div>\n      {subscriptions.map(sub => (\n        <div key={sub.id}>\n          <p>Subscription: {sub.amount} PYUSD</p>\n          <button onClick={() => executePayment(sub)}>\n            Execute Payment\n          </button>\n        </div>\n      ))}\n    </div>\n  );\n}"
+        }
+      },
+      {
+        "type": "hook",
+        "name": "usePaymentHistory",
+        "description": "Fetch payment history for a subscription",
+        "params": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "Subscription ID"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          }
+        ],
+        "returns": [
+          {
+            "name": "payments",
+            "type": "Payment[]",
+            "description": "Array of payments"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "description": "Loading state"
+          },
+          {
+            "name": "error",
+            "type": "string | null",
+            "description": "Error message if any"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { usePaymentHistory } from 'pyhard-vendor-sdk';\n\nfunction PaymentHistory({ subscriptionId, smartWalletAddress }) {\n  const { payments, loading, error } = usePaymentHistory(\n    subscriptionId, \n    smartWalletAddress\n  );\n\n  if (loading) return <div>Loading payments...</div>;\n  if (error) return <div>Error: {error}</div>;\n\n  return (\n    <div>\n      {payments.map(payment => (\n        <div key={payment.id}>\n          <p>Amount: {payment.amount} PYUSD</p>\n          <p>Date: {payment.date}</p>\n        </div>\n      ))}\n    </div>\n  );\n}"
+        }
+      },
+      {
+        "type": "hook",
+        "name": "usePaymentDetection",
+        "description": "Detect new payments in real-time",
+        "params": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "Subscription ID to monitor"
+          }
+        ],
+        "returns": [
+          {
+            "name": "newPayments",
+            "type": "Payment[]",
+            "description": "New payments detected"
+          },
+          {
+            "name": "isPolling",
+            "type": "boolean",
+            "description": "Whether currently polling"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { usePaymentDetection } from 'pyhard-vendor-sdk';\n\nfunction PaymentMonitor({ subscriptionId }) {\n  const { newPayments, isPolling } = usePaymentDetection(subscriptionId);\n\n  return (\n    <div>\n      <p>Polling: {isPolling ? 'Yes' : 'No'}</p>\n      <p>New payments: {newPayments.length}</p>\n    </div>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "examples": {
+    "title": "Examples",
+    "description": "Complete examples and use cases for PyHard integration",
+    "content": [
+      {
+        "type": "section",
+        "title": "Basic Integration",
+        "description": "Simple subscription creation",
+        "difficulty": "beginner",
+        "code": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { \n  PyHardProvider, \n  WalletConnect, \n  SubscriptionQRGenerator \n} from 'pyhard-vendor-sdk';\n\nfunction MyApp() {\n  return (\n    <PyHardProvider>\n      <div className=\"max-w-md mx-auto p-6 space-y-6\">\n        <WalletConnect />\n        <SubscriptionQRGenerator \n          onQRGenerated={(qrData) => {\n            console.log('QR Generated:', qrData);\n          }}\n        />\n      </div>\n    </PyHardProvider>\n  );\n}"
+        }
+      },
+      {
+        "type": "section",
+        "title": "Complete Dashboard",
+        "description": "Full vendor dashboard with all features",
+        "difficulty": "intermediate",
+        "code": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { \n  PyHardProvider, \n  WalletConnect, \n  SubscriptionQRGenerator,\n  PaymentQRGenerator,\n  SubscriptionList,\n  PaymentHistory,\n  useWallet,\n  useSubscriptions \n} from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  const { address } = useWallet();\n  const { subscriptions } = useSubscriptions(address);\n\n  return (\n    <PyHardProvider>\n      <div className=\"max-w-6xl mx-auto p-6\">\n        <WalletConnect />\n        <div className=\"grid grid-cols-1 md:grid-cols-2 gap-6\">\n          <SubscriptionQRGenerator />\n          <PaymentQRGenerator subscriptionId=\"123\" />\n        </div>\n        <SubscriptionList vendorAddress={address} />\n        <PaymentHistory subscriptionId=\"123\" smartWalletAddress=\"0x...\" />\n      </div>\n    </PyHardProvider>\n  );\n}"
+        }
+      },
+      {
+        "type": "section",
+        "title": "Custom Styling",
+        "description": "Headless components with custom styling",
+        "difficulty": "advanced",
+        "code": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { HeadlessSubscriptionQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction CustomSubscriptionForm() {\n  return (\n    <HeadlessSubscriptionQRGenerator>\n      {({ \n        amount, \n        setAmount, \n        interval, \n        setInterval, \n        generateQR, \n        qrData \n      }) => (\n        <div className=\"bg-white p-6 rounded-lg shadow-lg\">\n          <h2 className=\"text-2xl font-bold mb-4\">Create Subscription</h2>\n          <div className=\"space-y-4\">\n            <div>\n              <label className=\"block text-sm font-medium mb-2\">\n                Amount (PYUSD)\n              </label>\n              <input\n                type=\"number\"\n                value={amount}\n                onChange={(e) => setAmount(e.target.value)}\n                className=\"w-full p-2 border rounded\"\n              />\n            </div>\n            <div>\n              <label className=\"block text-sm font-medium mb-2\">\n                Interval\n              </label>\n              <select\n                value={interval}\n                onChange={(e) => setInterval(e.target.value)}\n                className=\"w-full p-2 border rounded\"\n              >\n                <option value=\"daily\">Daily</option>\n                <option value=\"weekly\">Weekly</option>\n                <option value=\"monthly\">Monthly</option>\n              </select>\n            </div>\n            <button\n              onClick={generateQR}\n              className=\"w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700\"\n            >\n              Generate QR Code\n            </button>\n            {qrData && (\n              <div className=\"text-center\">\n                <img src={qrData.qrCode} alt=\"Subscription QR\" />\n                <p className=\"text-sm text-gray-600 mt-2\">\n                  Scan with PyHard mobile app\n                </p>\n              </div>\n            )}\n          </div>\n        </div>\n      )}\n    </HeadlessSubscriptionQRGenerator>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "api": {
+    "title": "API Reference",
+    "description": "Complete API reference for PyHard Vendor SDK",
+    "content": [
+      {
+        "type": "section",
+        "title": "Types",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "interface Subscription {\n  id: string;\n  smartWallet: string;\n  vendor: string;\n  amountPerInterval: string;\n  interval: string;\n  lastPayment: string;\n  active: boolean;\n}\n\ninterface Payment {\n  id: string;\n  subscriptionId: string;\n  amount: string;\n  timestamp: string;\n  transactionHash: string;\n}\n\ninterface QRCodeData {\n  type: 'subscription' | 'payment';\n  data: any;\n  qrCode: string;\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Configuration",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "interface PyHardConfig {\n  projectId: string;\n  chainId: number;\n  paymasterUrl: string;\n  blockscoutUrl?: string;\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "components/walletconnect": {
+    "title": "WalletConnect",
+    "description": "Connect user wallets with Reown AppKit integration",
+    "content": [
+      {
+        "type": "component",
+        "name": "WalletConnect",
+        "description": "Connect user wallets with Reown AppKit integration",
+        "props": [
+          {
+            "name": "showManualInput",
+            "type": "boolean",
+            "default": "true",
+            "description": "Show manual address input option"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { WalletConnect } from 'pyhard-vendor-sdk';\n\nfunction MyComponent() {\n  return (\n    <WalletConnect \n      showManualInput={false}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/subscriptionqrgenerator": {
+    "title": "SubscriptionQRGenerator",
+    "description": "Generate QR codes for subscription requests",
+    "content": [
+      {
+        "type": "component",
+        "name": "SubscriptionQRGenerator",
+        "description": "Generate QR codes for subscription requests",
+        "props": [
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction CreateSubscription() {\n  return (\n    <SubscriptionQRGenerator \n      onQRGenerated={(qrData) => {\n        console.log('QR Code:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/paymentqrgenerator": {
+    "title": "PaymentQRGenerator",
+    "description": "Generate QR codes for payment requests",
+    "content": [
+      {
+        "type": "component",
+        "name": "PaymentQRGenerator",
+        "description": "Generate QR codes for payment requests",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription to pay for"
+          },
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction RequestPayment() {\n  return (\n    <PaymentQRGenerator \n      subscriptionId=\"123\"\n      onQRGenerated={(qrData) => {\n        console.log('Payment QR:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/subscriptionlist": {
+    "title": "SubscriptionList",
+    "description": "Display and manage subscriptions",
+    "content": [
+      {
+        "type": "component",
+        "name": "SubscriptionList",
+        "description": "Display and manage subscriptions",
+        "props": [
+          {
+            "name": "vendorAddress",
+            "type": "string",
+            "description": "Vendor wallet address"
+          },
+          {
+            "name": "onPaymentExecuted",
+            "type": "(subscriptionId: string, txHash: string) => void",
+            "description": "Callback when payment is executed"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionList } from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  return (\n    <SubscriptionList \n      vendorAddress=\"0x...\"\n      onPaymentExecuted={(id, hash) => {\n        console.log('Payment executed:', id, hash);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/paymenthistory": {
+    "title": "PaymentHistory",
+    "description": "Display payment history for a subscription",
+    "content": [
+      {
+        "type": "component",
+        "name": "PaymentHistory",
+        "description": "Display payment history for a subscription",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentHistory } from 'pyhard-vendor-sdk';\n\nfunction SubscriptionDetails() {\n  return (\n    <PaymentHistory \n      subscriptionId=\"123\"\n      smartWalletAddress=\"0x...\"\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/walletconnect": {
+    "title": "WalletConnect",
+    "description": "Connect user wallets with Reown AppKit integration",
+    "content": [
+      {
+        "type": "component",
+        "name": "WalletConnect",
+        "description": "Connect user wallets with Reown AppKit integration",
+        "props": [
+          {
+            "name": "showManualInput",
+            "type": "boolean",
+            "default": "true",
+            "description": "Show manual address input option"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { WalletConnect } from 'pyhard-vendor-sdk';\n\nfunction MyComponent() {\n  return (\n    <WalletConnect \n      showManualInput={false}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/subscriptionqrgenerator": {
+    "title": "SubscriptionQRGenerator",
+    "description": "Generate QR codes for subscription requests",
+    "content": [
+      {
+        "type": "component",
+        "name": "SubscriptionQRGenerator",
+        "description": "Generate QR codes for subscription requests",
+        "props": [
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction CreateSubscription() {\n  return (\n    <SubscriptionQRGenerator \n      onQRGenerated={(qrData) => {\n        console.log('QR Code:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/paymentqrgenerator": {
+    "title": "PaymentQRGenerator",
+    "description": "Generate QR codes for payment requests",
+    "content": [
+      {
+        "type": "component",
+        "name": "PaymentQRGenerator",
+        "description": "Generate QR codes for payment requests",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription to pay for"
+          },
+          {
+            "name": "onQRGenerated",
+            "type": "(qrData: QRCodeData) => void",
+            "description": "Callback when QR is generated"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction RequestPayment() {\n  return (\n    <PaymentQRGenerator \n      subscriptionId=\"123\"\n      onQRGenerated={(qrData) => {\n        console.log('Payment QR:', qrData);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/subscriptionlist": {
+    "title": "SubscriptionList",
+    "description": "Display and manage subscriptions",
+    "content": [
+      {
+        "type": "component",
+        "name": "SubscriptionList",
+        "description": "Display and manage subscriptions",
+        "props": [
+          {
+            "name": "vendorAddress",
+            "type": "string",
+            "description": "Vendor wallet address"
+          },
+          {
+            "name": "onPaymentExecuted",
+            "type": "(subscriptionId: string, txHash: string) => void",
+            "description": "Callback when payment is executed"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { SubscriptionList } from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  return (\n    <SubscriptionList \n      vendorAddress=\"0x...\"\n      onPaymentExecuted={(id, hash) => {\n        console.log('Payment executed:', id, hash);\n      }}\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "components/paymenthistory": {
+    "title": "PaymentHistory",
+    "description": "Display payment history for a subscription",
+    "content": [
+      {
+        "type": "component",
+        "name": "PaymentHistory",
+        "description": "Display payment history for a subscription",
+        "props": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "ID of the subscription"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { PaymentHistory } from 'pyhard-vendor-sdk';\n\nfunction SubscriptionDetails() {\n  return (\n    <PaymentHistory \n      subscriptionId=\"123\"\n      smartWalletAddress=\"0x...\"\n    />\n  );\n}"
+        }
+      }
+    ]
+  },
+  "hooks/usewallet": {
+    "title": "useWallet",
+    "description": "Manage wallet connection state with Reown AppKit integration",
+    "content": [
+      {
+        "type": "hook",
+        "name": "useWallet",
+        "description": "Manage wallet connection state",
+        "returns": [
+          {
+            "name": "address",
+            "type": "string | null",
+            "description": "Connected wallet address"
+          },
+          {
+            "name": "isConnected",
+            "type": "boolean",
+            "description": "Whether wallet is connected"
+          },
+          {
+            "name": "connect",
+            "type": "() => void",
+            "description": "Connect wallet function"
+          },
+          {
+            "name": "disconnect",
+            "type": "() => void",
+            "description": "Disconnect wallet function"
+          },
+          {
+            "name": "manualAddress",
+            "type": "string",
+            "description": "Manually entered address"
+          },
+          {
+            "name": "setManualAddress",
+            "type": "(address: string) => void",
+            "description": "Set manual address"
+          },
+          {
+            "name": "isManual",
+            "type": "boolean",
+            "description": "Whether using manual address input"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { useWallet } from 'pyhard-vendor-sdk';\n\nfunction MyComponent() {\n  const { \n    address, \n    isConnected, \n    connect, \n    disconnect,\n    manualAddress,\n    setManualAddress,\n    isManual \n  } = useWallet();\n  \n  return (\n    <div>\n      {isConnected ? (\n        <div>\n          <p>Connected: {address}</p>\n          <button onClick={disconnect}>Disconnect</button>\n        </div>\n      ) : (\n        <div>\n          <button onClick={connect}>Connect Wallet</button>\n          <input \n            type=\"text\" \n            value={manualAddress}\n            onChange={(e) => setManualAddress(e.target.value)}\n            placeholder=\"Or enter address manually\"\n          />\n        </div>\n      )}\n    </div>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "hooks/usesubscriptions": {
+    "title": "useSubscriptions",
+    "description": "Fetch and manage subscriptions for a vendor",
+    "content": [
+      {
+        "type": "hook",
+        "name": "useSubscriptions",
+        "description": "Fetch and manage subscriptions",
+        "parameters": [
+          {
+            "name": "vendorAddress",
+            "type": "string",
+            "description": "Vendor wallet address"
+          }
+        ],
+        "returns": [
+          {
+            "name": "subscriptions",
+            "type": "Subscription[]",
+            "description": "Array of subscriptions"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "description": "Loading state"
+          },
+          {
+            "name": "error",
+            "type": "string | null",
+            "description": "Error message if any"
+          },
+          {
+            "name": "refetch",
+            "type": "() => void",
+            "description": "Refetch subscriptions"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { useSubscriptions } from 'pyhard-vendor-sdk';\n\nfunction SubscriptionsList({ vendorAddress }: { vendorAddress: string }) {\n  const { subscriptions, loading, error, refetch } = useSubscriptions(vendorAddress);\n  \n  if (loading) return <div>Loading...</div>;\n  if (error) return <div>Error: {error}</div>;\n  \n  return (\n    <div>\n      <button onClick={refetch}>Refresh</button>\n      {subscriptions.map(sub => (\n        <div key={sub.id}>\n          <p>Amount: {sub.amountPerInterval} PYUSD</p>\n          <p>Interval: {sub.interval}</p>\n          <p>Active: {sub.active ? 'Yes' : 'No'}</p>\n        </div>\n      ))}\n    </div>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "hooks/usepaymenthistory": {
+    "title": "usePaymentHistory",
+    "description": "Fetch payment history for a specific subscription",
+    "content": [
+      {
+        "type": "hook",
+        "name": "usePaymentHistory",
+        "description": "Fetch payment history for a subscription",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "Subscription ID"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          }
+        ],
+        "returns": [
+          {
+            "name": "payments",
+            "type": "Payment[]",
+            "description": "Array of payment records"
+          },
+          {
+            "name": "loading",
+            "type": "boolean",
+            "description": "Loading state"
+          },
+          {
+            "name": "error",
+            "type": "string | null",
+            "description": "Error message if any"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { usePaymentHistory } from 'pyhard-vendor-sdk';\n\nfunction PaymentHistory({ subscriptionId, smartWalletAddress }: {\n  subscriptionId: string;\n  smartWalletAddress: string;\n}) {\n  const { payments, loading, error } = usePaymentHistory(subscriptionId, smartWalletAddress);\n  \n  if (loading) return <div>Loading payment history...</div>;\n  if (error) return <div>Error: {error}</div>;\n  \n  return (\n    <div>\n      <h3>Payment History</h3>\n      {payments.map(payment => (\n        <div key={payment.id}>\n          <p>Amount: {payment.amount} PYUSD</p>\n          <p>Date: {new Date(payment.timestamp).toLocaleDateString()}</p>\n          <p>TX: {payment.transactionHash}</p>\n        </div>\n      ))}\n    </div>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "hooks/usepaymentdetection": {
+    "title": "usePaymentDetection",
+    "description": "Detect new payments in real-time using polling",
+    "content": [
+      {
+        "type": "hook",
+        "name": "usePaymentDetection",
+        "description": "Detect new payments in real-time",
+        "parameters": [
+          {
+            "name": "subscriptionId",
+            "type": "string",
+            "description": "Subscription ID to monitor"
+          },
+          {
+            "name": "smartWalletAddress",
+            "type": "string",
+            "description": "Smart wallet address"
+          },
+          {
+            "name": "interval",
+            "type": "number",
+            "default": "5000",
+            "description": "Polling interval in milliseconds"
+          }
+        ],
+        "returns": [
+          {
+            "name": "newPayments",
+            "type": "Payment[]",
+            "description": "New payments since last check"
+          },
+          {
+            "name": "isPolling",
+            "type": "boolean",
+            "description": "Whether currently polling"
+          },
+          {
+            "name": "startPolling",
+            "type": "() => void",
+            "description": "Start polling for payments"
+          },
+          {
+            "name": "stopPolling",
+            "type": "() => void",
+            "description": "Stop polling for payments"
+          }
+        ],
+        "example": {
+          "type": "code",
+          "language": "tsx",
+          "code": "import { usePaymentDetection } from 'pyhard-vendor-sdk';\n\nfunction PaymentMonitor({ subscriptionId, smartWalletAddress }: {\n  subscriptionId: string;\n  smartWalletAddress: string;\n}) {\n  const { \n    newPayments, \n    isPolling, \n    startPolling, \n    stopPolling \n  } = usePaymentDetection(subscriptionId, smartWalletAddress, 3000);\n  \n  useEffect(() => {\n    if (newPayments.length > 0) {\n      console.log('New payments detected:', newPayments);\n      // Show notification or update UI\n    }\n  }, [newPayments]);\n  \n  return (\n    <div>\n      <button \n        onClick={isPolling ? stopPolling : startPolling}\n        className={isPolling ? 'bg-red-500' : 'bg-green-500'}\n      >\n        {isPolling ? 'Stop Monitoring' : 'Start Monitoring'}\n      </button>\n      {newPayments.length > 0 && (\n        <div className=\"bg-green-100 p-2 rounded\">\n          {newPayments.length} new payment(s) detected!\n        </div>\n      )}\n    </div>\n  );\n}"
+        }
+      }
+    ]
+  },
+  "api/types": {
+    "title": "Types",
+    "description": "TypeScript interfaces and types for PyHard SDK",
+    "content": [
+      {
+        "type": "section",
+        "title": "Core Types",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "interface Subscription {\n  id: string;\n  smartWallet: string;\n  vendor: string;\n  amountPerInterval: string;\n  interval: string;\n  lastPayment: string;\n  active: boolean;\n}\n\ninterface Payment {\n  id: string;\n  subscriptionId: string;\n  amount: string;\n  timestamp: string;\n  transactionHash: string;\n}\n\ninterface QRCodeData {\n  type: 'subscription' | 'payment';\n  data: SubscriptionRequestData | PaymentRequestData;\n  qrCode: string;\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Request Types",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "interface SubscriptionRequestData {\n  type: 'subscription';\n  vendor: string;\n  amount: string;\n  interval: 'daily' | 'weekly' | 'monthly';\n}\n\ninterface PaymentRequestData {\n  type: 'payment';\n  subscriptionId: string;\n  amount: string;\n}\n\ninterface PyHardConfig {\n  projectId: string;\n  chainId: number;\n  paymasterUrl: string;\n  blockscoutUrl?: string;\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "api/configuration": {
+    "title": "Configuration",
+    "description": "Configure PyHard SDK for your application",
+    "content": [
+      {
+        "type": "section",
+        "title": "PyHardProvider Configuration",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { PyHardProvider } from 'pyhard-vendor-sdk';\n\nfunction App() {\n  return (\n    <PyHardProvider\n      projectId=\"your-project-id\"\n      chainId={421614} // Arbitrum Sepolia\n      paymasterUrl=\"https://your-paymaster.workers.dev\"\n      blockscoutUrl=\"https://sepolia-explorer.arbitrum.io/api\"\n    >\n      <YourApp />\n    </PyHardProvider>\n  );\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Environment Variables",
+        "content": [
+          {
+            "type": "code",
+            "language": "bash",
+            "code": "# Required\nNEXT_PUBLIC_PROJECT_ID=your_walletconnect_project_id\nNEXT_PUBLIC_PAYMASTER_URL=https://your-paymaster.workers.dev\n\n# Optional\nNEXT_PUBLIC_BLOCKSCOUT_URL=https://sepolia-explorer.arbitrum.io/api\nNEXT_PUBLIC_CHAIN_ID=421614"
+          }
+        ]
+      }
+    ]
+  },
+  "api/utilities": {
+    "title": "Utilities",
+    "description": "Utility functions for working with PyHard SDK",
+    "content": [
+      {
+        "type": "section",
+        "title": "QR Code Generation",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "import { generateSubscriptionQR, generatePaymentQR } from 'pyhard-vendor-sdk';\n\n// Generate subscription QR code\nconst subscriptionQR = generateSubscriptionQR({\n  vendor: '0x...',\n  amount: '10.00',\n  interval: 'monthly'\n});\n\n// Generate payment QR code\nconst paymentQR = generatePaymentQR({\n  subscriptionId: '123',\n  amount: '10.00'\n});"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Formatting Utilities",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "import { formatAmount, formatTimestamp, formatAddress } from 'pyhard-vendor-sdk';\n\n// Format amounts\nconst formattedAmount = formatAmount('1000000000000000000'); // \"1.00 PYUSD\"\n\n// Format timestamps\nconst formattedTime = formatTimestamp('1704067200'); // \"Jan 1, 2024\"\n\n// Format addresses\nconst shortAddress = formatAddress('0x1234567890abcdef...'); // \"0x1234...cdef\""
+          }
+        ]
+      }
+    ]
+  },
+  "api/constants": {
+    "title": "Constants",
+    "description": "Constants and configuration values used by PyHard SDK",
+    "content": [
+      {
+        "type": "section",
+        "title": "Chain Configuration",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "// Chain IDs\nconst CHAIN_IDS = {\n  ARBITRUM_SEPOLIA: 421614,\n  ARBITRUM_MAINNET: 42161\n} as const;\n\n// Contract Addresses\nconst CONTRACTS = {\n  SMART_WALLET_FACTORY: '0x884ff7a379192ef709e0d865d52adfa967e1ab94',\n  EOADelegation: '0x0977081db8717cb860716edcd117ef1fbf108857',\n  PYUSD: '0x6c3ea9036406852006290770bed663cac6ce1c06'\n} as const;"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Interval Presets",
+        "content": [
+          {
+            "type": "code",
+            "language": "typescript",
+            "code": "const INTERVAL_PRESETS = {\n  DAILY: { label: 'Daily', seconds: 86400 },\n  WEEKLY: { label: 'Weekly', seconds: 604800 },\n  MONTHLY: { label: 'Monthly', seconds: 2592000 }\n} as const;\n\n// API Endpoints\nconst API_ENDPOINTS = {\n  BLOCKSCOUT: 'https://sepolia-explorer.arbitrum.io/api',\n  PAYMASTER: 'https://your-paymaster.workers.dev'\n} as const;"
+          }
+        ]
+      }
+    ]
+  },
+  "examples/basic-integration": {
+    "title": "Basic Integration",
+    "description": "Get started with PyHard SDK in your React app",
+    "content": [
+      {
+        "type": "section",
+        "title": "Setup",
+        "content": [
+          {
+            "type": "code",
+            "language": "bash",
+            "code": "npm install pyhard-vendor-sdk"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Provider Setup",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { PyHardProvider } from 'pyhard-vendor-sdk';\n\nfunction App() {\n  return (\n    <PyHardProvider\n      projectId={process.env.NEXT_PUBLIC_PROJECT_ID!}\n      chainId={421614}\n      paymasterUrl={process.env.NEXT_PUBLIC_PAYMASTER_URL!}\n    >\n      <VendorDashboard />\n    </PyHardProvider>\n  );\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Basic Components",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { \n  WalletConnect, \n  SubscriptionQRGenerator, \n  SubscriptionList \n} from 'pyhard-vendor-sdk';\n\nfunction VendorDashboard() {\n  return (\n    <div className=\"p-6\">\n      <h1>Vendor Dashboard</h1>\n      \n      <div className=\"mb-6\">\n        <WalletConnect />\n      </div>\n      \n      <div className=\"mb-6\">\n        <SubscriptionQRGenerator \n          onQRGenerated={(qrData) => {\n            console.log('QR Code:', qrData);\n          }}\n        />\n      </div>\n      \n      <SubscriptionList \n        vendorAddress=\"0x...\"\n        onPaymentExecuted={(id, hash) => {\n          console.log('Payment executed:', id, hash);\n        }}\n      />\n    </div>\n  );\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "examples/custom-styling": {
+    "title": "Custom Styling",
+    "description": "Customize the appearance of PyHard components",
+    "content": [
+      {
+        "type": "section",
+        "title": "CSS Customization",
+        "content": [
+          {
+            "type": "code",
+            "language": "css",
+            "code": "/* Override component styles */\n.pyhard-wallet-connect {\n  @apply bg-blue-600 text-white rounded-lg px-4 py-2;\n}\n\n.pyhard-subscription-card {\n  @apply bg-white border border-gray-200 rounded-lg p-4 shadow-sm;\n}\n\n.pyhard-qr-generator {\n  @apply bg-gradient-to-r from-purple-500 to-pink-500 text-white;\n}"
+          }
+        ]
+      },
+      {
+        "type": "section",
+        "title": "Tailwind Configuration",
+        "content": [
+          {
+            "type": "code",
+            "language": "javascript",
+            "code": "// tailwind.config.js\nmodule.exports = {\n  content: [\n    './src/**/*.{js,ts,jsx,tsx}',\n    './node_modules/pyhard-vendor-sdk/**/*.{js,ts,jsx,tsx}'\n  ],\n  theme: {\n    extend: {\n      colors: {\n        'pyhard-blue': '#3B82F6',\n        'pyhard-accent': '#8B5CF6'\n      }\n    }\n  }\n};"
+          }
+        ]
+      }
+    ]
+  },
+  "examples/headless-components": {
+    "title": "Headless Components",
+    "description": "Use headless components for maximum customization",
+    "content": [
+      {
+        "type": "section",
+        "title": "Headless Subscription QR Generator",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { HeadlessSubscriptionQRGenerator } from 'pyhard-vendor-sdk';\n\nfunction CustomSubscriptionForm() {\n  return (\n    <HeadlessSubscriptionQRGenerator>\n      {({ \n        amount, \n        setAmount, \n        interval, \n        setInterval, \n        generateQR, \n        qrData \n      }) => (\n        <div className=\"bg-white p-6 rounded-lg shadow-lg\">\n          <h2 className=\"text-2xl font-bold mb-4\">Create Subscription</h2>\n          <div className=\"space-y-4\">\n            <div>\n              <label className=\"block text-sm font-medium mb-2\">\n                Amount (PYUSD)\n              </label>\n              <input\n                type=\"number\"\n                value={amount}\n                onChange={(e) => setAmount(e.target.value)}\n                className=\"w-full p-2 border rounded\"\n              />\n            </div>\n            <div>\n              <label className=\"block text-sm font-medium mb-2\">\n                Interval\n              </label>\n              <select\n                value={interval}\n                onChange={(e) => setInterval(e.target.value)}\n                className=\"w-full p-2 border rounded\"\n              >\n                <option value=\"daily\">Daily</option>\n                <option value=\"weekly\">Weekly</option>\n                <option value=\"monthly\">Monthly</option>\n              </select>\n            </div>\n            <button\n              onClick={generateQR}\n              className=\"w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700\"\n            >\n              Generate QR Code\n            </button>\n            {qrData && (\n              <div className=\"text-center\">\n                <img src={qrData.qrCode} alt=\"Subscription QR\" />\n                <p className=\"text-sm text-gray-600 mt-2\">\n                  Scan with PyHard mobile app\n                </p>\n              </div>\n            )}\n          </div>\n        </div>\n      )}\n    </HeadlessSubscriptionQRGenerator>\n  );\n}"
+          }
+        ]
+      }
+    ]
+  },
+  "examples/realtime-monitoring": {
+    "title": "Real-time Monitoring",
+    "description": "Monitor payments and subscriptions in real-time",
+    "content": [
+      {
+        "type": "section",
+        "title": "Payment Detection",
+        "content": [
+          {
+            "type": "code",
+            "language": "tsx",
+            "code": "import { usePaymentDetection } from 'pyhard-vendor-sdk';\nimport { useEffect, useState } from 'react';\n\nfunction PaymentMonitor({ subscriptionId, smartWalletAddress }) {\n  const { newPayments, isPolling, startPolling, stopPolling } = usePaymentDetection(\n    subscriptionId, \n    smartWalletAddress, \n    5000 // Poll every 5 seconds\n  );\n  \n  const [notifications, setNotifications] = useState([]);\n  \n  useEffect(() => {\n    if (newPayments.length > 0) {\n      const newNotifications = newPayments.map(payment => ({\n        id: payment.id,\n        amount: payment.amount,\n        timestamp: Date.now()\n      }));\n      \n      setNotifications(prev => [...newNotifications, ...prev]);\n      \n      // Show browser notification\n      if (Notification.permission === 'granted') {\n        new Notification('New Payment Received!', {\n          body: `${payment.amount} PYUSD received`\n        });\n      }\n    }\n  }, [newPayments]);\n  \n  return (\n    <div className=\"space-y-4\">\n      <div className=\"flex gap-2\">\n        <button \n          onClick={isPolling ? stopPolling : startPolling}\n          className={`px-4 py-2 rounded ${\n            isPolling ? 'bg-red-500' : 'bg-green-500'\n          } text-white`}\n        >\n          {isPolling ? 'Stop Monitoring' : 'Start Monitoring'}\n        </button>\n      </div>\n      \n      {notifications.length > 0 && (\n        <div className=\"bg-green-50 border border-green-200 rounded-lg p-4\">\n          <h3 className=\"font-semibold text-green-800 mb-2\">\n            Recent Payments ({notifications.length})\n          </h3>\n          <div className=\"space-y-2\">\n            {notifications.slice(0, 5).map(notification => (\n              <div key={notification.id} className=\"text-sm text-green-700\">\n                {notification.amount} PYUSD - {new Date(notification.timestamp).toLocaleTimeString()}\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n    </div>\n  );\n}"
+          }
+        ]
+      }
+    ]
+  }
+}
+

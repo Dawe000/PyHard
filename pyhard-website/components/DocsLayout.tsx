@@ -4,66 +4,125 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ChevronRight, Menu, X, Book, Code, Zap, ExternalLink } from 'lucide-react';
+import docsData from '@/data/docs.json';
 
-const navigation = [
-  {
-    name: 'Get Started',
-    items: [
-      { name: 'Introduction', href: '/docs' },
-      { name: 'Installation', href: '/docs/getting-started' },
-      { name: 'Quick Start', href: '/docs/getting-started' },
-    ]
-  },
-  {
+// Generate navigation dynamically from docs data
+const generateNavigation = () => {
+  const navigation = [
+    {
+      name: 'Get Started',
+      items: [
+        { name: 'Introduction', href: '/docs' },
+        { name: 'Getting Started', href: '/docs/getting-started' },
+      ]
+    }
+  ];
+
+  // Add Components section
+  const componentItems = [{ name: 'Overview', href: '/docs/components' }];
+  
+  // Add individual component pages
+  console.log('Available keys:', Object.keys(docsData));
+  Object.keys(docsData).forEach(key => {
+    if (key.startsWith('components/')) {
+      console.log('Found component:', key);
+      const componentName = key.replace('components/', '');
+      // Convert camelCase to readable format
+      const readableName = componentName
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+      componentItems.push({
+        name: readableName,
+        href: `/docs/${key}`
+      });
+    }
+  });
+  
+  navigation.push({
     name: 'Components',
-    items: [
-      { name: 'Overview', href: '/docs/components' },
-      { name: 'WalletConnect', href: '/docs/components#walletconnect' },
-      { name: 'SubscriptionQRGenerator', href: '/docs/components#subscriptionqrgenerator' },
-      { name: 'PaymentQRGenerator', href: '/docs/components#paymentqrgenerator' },
-      { name: 'SubscriptionList', href: '/docs/components#subscriptionlist' },
-      { name: 'PaymentHistory', href: '/docs/components#paymenthistory' },
-    ]
-  },
-  {
+    items: componentItems
+  });
+
+  // Add Hooks section
+  const hookItems = [{ name: 'Overview', href: '/docs/hooks' }];
+  
+  // Add individual hook pages
+  Object.keys(docsData).forEach(key => {
+    if (key.startsWith('hooks/')) {
+      console.log('Found hook:', key);
+      const hookName = key.replace('hooks/', '');
+      // Convert camelCase to readable format
+      const readableName = hookName
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+      hookItems.push({
+        name: readableName,
+        href: `/docs/${key}`
+      });
+    }
+  });
+  
+  navigation.push({
     name: 'Hooks',
-    items: [
-      { name: 'Overview', href: '/docs/hooks' },
-      { name: 'useWallet', href: '/docs/hooks#usewallet' },
-      { name: 'useSubscriptions', href: '/docs/hooks#usesubscriptions' },
-      { name: 'usePaymentHistory', href: '/docs/hooks#usepaymenthistory' },
-      { name: 'usePaymentDetection', href: '/docs/hooks#usepaymentdetection' },
-    ]
-  },
-  {
+    items: hookItems
+  });
+
+  // Add API Reference section
+  const apiItems = [{ name: 'Overview', href: '/docs/api' }];
+  
+  // Add individual API pages
+  Object.keys(docsData).forEach(key => {
+    if (key.startsWith('api/')) {
+      console.log('Found API:', key);
+      const apiName = key.replace('api/', '');
+      // Convert camelCase to readable format
+      const readableName = apiName
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+      apiItems.push({
+        name: readableName,
+        href: `/docs/${key}`
+      });
+    }
+  });
+  
+  navigation.push({
     name: 'API Reference',
-    items: [
-      { name: 'Overview', href: '/docs/api' },
-      { name: 'Types', href: '/docs/api#types' },
-      { name: 'Utilities', href: '/docs/api#utilities' },
-      { name: 'Configuration', href: '/docs/api#configuration' },
-    ]
-  },
-  {
+    items: apiItems
+  });
+
+  // Add Examples section
+  const exampleItems = [{ name: 'Overview', href: '/docs/examples' }];
+  
+  // Add individual example pages
+  Object.keys(docsData).forEach(key => {
+    if (key.startsWith('examples/')) {
+      console.log('Found example:', key);
+      const exampleName = key.replace('examples/', '');
+      // Convert kebab-case to readable format
+      const readableName = exampleName
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+      exampleItems.push({
+        name: readableName,
+        href: `/docs/${key}`
+      });
+    }
+  });
+  
+  navigation.push({
     name: 'Examples',
-    items: [
-      { name: 'Basic Integration', href: '/docs/examples#basic-integration' },
-      { name: 'Complete Dashboard', href: '/docs/examples#complete-dashboard' },
-      { name: 'Custom Styling', href: '/docs/examples#custom-styling' },
-      { name: 'Real-time Updates', href: '/docs/examples#real-time-updates' },
-      { name: 'Error Handling', href: '/docs/examples#error-handling' },
-    ]
-  },
-  {
-    name: 'Application',
-    items: [
-      { name: 'Overview', href: '/docs/app' },
-      { name: 'Architecture', href: '/docs/app#architecture' },
-      { name: 'Use Cases', href: '/docs/app#use-cases' },
-      { name: 'Getting Started', href: '/docs/app#getting-started' },
-    ]
-  }
-];
+    items: exampleItems
+  });
+
+  return navigation;
+};
+
+const navigation = generateNavigation();
 
 interface DocsLayoutProps {
   children: React.ReactNode;

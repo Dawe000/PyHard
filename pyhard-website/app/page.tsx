@@ -277,7 +277,7 @@ function App() {
           {/* Links */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6">
             <a 
-              href="https://www.npmjs.com/settings/dawe0000/packages" 
+              href="https://www.npmjs.com/package/pyhard-vendor-sdk" 
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-400 hover:text-pyhard-blue transition-colors duration-200 text-sm"
