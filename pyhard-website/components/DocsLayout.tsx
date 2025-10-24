@@ -101,7 +101,7 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 flex">
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
@@ -111,7 +111,7 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
       )}
 
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-gray-800 transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:flex-shrink-0 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         <div className="flex flex-col h-full">
@@ -175,9 +175,9 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
       </div>
 
       {/* Main content */}
-      <div className="lg:pl-64">
+      <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 lg:px-6">
+        <header className="bg-gray-800 border-b border-gray-700 px-4 py-3 lg:px-6 flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <button
@@ -208,9 +208,9 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
         </header>
 
         {/* Page content */}
-        <div className="flex">
+        <div className="flex flex-1 min-h-0">
           {/* Main content area */}
-          <main className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8">
+          <main className="flex-1 max-w-4xl mx-auto px-4 py-8 lg:px-8 overflow-y-auto">
             {title && (
               <div className="mb-8">
                 <h1 className="text-4xl font-space-grotesk font-bold text-white mb-4">
@@ -228,7 +228,7 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
 
           {/* Table of contents */}
           {tableOfContents.length > 0 && (
-            <aside className="hidden xl:block w-64 p-8">
+            <aside className="hidden xl:block w-64 p-8 flex-shrink-0">
               <div className="sticky top-8">
                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
                   On this page

@@ -70,7 +70,7 @@ export function Footer() {
             <ul className="space-y-2">
               <li>
                 <a
-                  href="https://github.com/yourusername/pyhard"
+                  href="https://github.com/Dawe000/PyHard"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-2"

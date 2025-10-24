@@ -39,7 +39,7 @@ export function Navigation() {
               </Link>
             ))}
             <a
-              href="https://github.com/yourusername/pyhard"
+              href="https://github.com/Dawe000/PyHard"
               target="_blank"
               rel="noopener noreferrer"
               className="text-gray-300 hover:text-white transition-colors"
@@ -73,7 +73,7 @@ export function Navigation() {
               </Link>
             ))}
             <a
-              href="https://github.com/yourusername/pyhard"
+              href="https://github.com/Dawe000/PyHard"
               target="_blank"
               rel="noopener noreferrer"
               className="block px-3 py-2 text-gray-300 hover:text-white hover:bg-white/5 rounded-md transition-colors"
