@@ -7,9 +7,41 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
 export default function Home() {
   return (
-    <div>
+    <div className="pt-16">
       {/* Hero Section */}
       <Hero />
+
+      {/* Quick Links Section */}
+      <section className="py-8 bg-gradient-to-r from-pyhard-blue/10 to-pyhard-accent/10 border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-8">
+            <a 
+              href="https://www.npmjs.com/package/pyhard-vendor-sdk" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center space-x-3 bg-pyhard-blue hover:bg-pyhard-blue/80 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+            >
+              <span className="text-2xl">📦</span>
+              <div>
+                <div className="text-sm opacity-90">Install via npm</div>
+                <div className="font-mono text-sm">pyhard-vendor-sdk</div>
+              </div>
+            </a>
+            <a 
+              href="https://github.com/Dawe000/PyHard" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 text-white px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 shadow-lg"
+            >
+              <span className="text-2xl">🐙</span>
+              <div>
+                <div className="text-sm opacity-90">View on GitHub</div>
+                <div className="font-mono text-sm">PyHard Ecosystem</div>
+              </div>
+            </a>
+          </div>
+        </div>
+      </section>
 
       {/* What is PyHard Section */}
       <section className="py-24 bg-gradient-to-br from-white/5 to-white/10">
@@ -20,10 +52,10 @@ export default function Home() {
                 What is <span className="bg-gradient-to-r from-pyhard-blue to-pyhard-accent bg-clip-text text-transparent">PyHard</span>?
               </h2>
               <p className="text-xl text-gray-300 mb-8 leading-relaxed">
-                PyHard is a smart wallet system built on Arbitrum that enables <span className="text-pyhard-blue font-semibold bg-pyhard-blue/10 px-2 py-1 rounded">gasless recurring payments</span> using EIP-7702 delegation.
+                PyHard is a comprehensive crypto wallet ecosystem that makes blockchain accessible to non-technical users through <span className="text-pyhard-blue font-semibold bg-pyhard-blue/10 px-2 py-1 rounded">gasless transactions</span>, QR code payments, social features, and family banking.
               </p>
               <p className="text-lg text-gray-300 mb-8 leading-relaxed">
-                Vendors can accept subscriptions without users paying gas fees, and users can manage sub-accounts with spending limits for family allowances and budgeting.
+                Built on Arbitrum with PYUSD integration, PyHard enables vendors to accept payments and subscriptions while users enjoy zero gas fees, family sub-wallets, and PayPal-style UX.
               </p>
               <div className="space-y-4">
                 <div className="flex items-start space-x-4 group">
@@ -42,7 +74,19 @@ export default function Home() {
                   <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
                     <CheckCircle2 className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-gray-300 text-lg">Sub-account system for family management</span>
+                  <span className="text-gray-300 text-lg">QR code payments and subscriptions</span>
+                </div>
+                <div className="flex items-start space-x-4 group">
+                  <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-lg">Family banking with sub-wallets and spending limits</span>
+                </div>
+                <div className="flex items-start space-x-4 group">
+                  <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-lg">Social features and contact management</span>
                 </div>
               </div>
             </div>
@@ -68,6 +112,117 @@ export default function Home() {
 
       {/* Features Section */}
       <Features />
+
+      {/* Explore the App Section */}
+      <section id="explore-app" className="py-20 bg-gradient-to-br from-pyhard-accent/5 to-pyhard-blue/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-space-grotesk font-bold text-white mb-4">
+              Explore the App
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              Discover the PyHard mobile experience with gasless transactions, family banking, and social features
+            </p>
+          </div>
+
+          {/* Placeholder content - to be filled later */}
+          <div className="bg-white/5 rounded-2xl p-12 border border-white/10 text-center">
+            <div className="text-6xl mb-6">📱</div>
+            <h3 className="text-2xl font-semibold text-white mb-4">
+              Mobile App Showcase
+            </h3>
+            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
+              This section will showcase the PyHard mobile app with screenshots, feature highlights, and user experience demonstrations.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <div className="text-3xl mb-3">💳</div>
+                <h4 className="text-lg font-semibold text-white mb-2">Payment Features</h4>
+                <p className="text-gray-400 text-sm">QR code payments, gasless transactions, and social payments</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <div className="text-3xl mb-3">👨‍👩‍👧‍👦</div>
+                <h4 className="text-lg font-semibold text-white mb-2">Family Banking</h4>
+                <p className="text-gray-400 text-sm">Sub-wallets, spending limits, and parental controls</p>
+              </div>
+              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
+                <div className="text-3xl mb-3">📊</div>
+                <h4 className="text-lg font-semibold text-white mb-2">Subscription Management</h4>
+                <p className="text-gray-400 text-sm">Recurring payments, vendor subscriptions, and payment history</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Ecosystem Components Section */}
+      <section className="py-20 bg-gradient-to-br from-pyhard-blue/5 to-pyhard-accent/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl font-space-grotesk font-bold text-white mb-4">
+              Complete Ecosystem
+            </h2>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
+              PyHard consists of 6 core components working together to create a seamless crypto experience
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "PyHard Mobile App",
+                description: "Main wallet for users with gasless transactions, QR code payments, and social features",
+                icon: "📱",
+                features: ["PYUSD Balance", "Transaction History", "Sub-Accounts", "Social Payments"]
+              },
+              {
+                title: "PyHard Child App", 
+                description: "Specialized app for children with parental controls and allowance management",
+                icon: "👶",
+                features: ["Allowance Tracking", "Spending Limits", "QR Code Scanning", "Parental Controls"]
+              },
+              {
+                title: "Paymaster Worker",
+                description: "Cloudflare Worker providing gas sponsorship for all transactions",
+                icon: "⚡",
+                features: ["Gas Sponsorship", "EIP-7702 Support", "Rate Limiting", "Multi-chain Support"]
+              },
+              {
+                title: "Vendor SDK",
+                description: "React SDK for vendors to integrate payments and subscriptions",
+                icon: "🛠️",
+                features: ["QR Code Generation", "Payment Processing", "Subscription Management", "Real-time Detection"]
+              },
+              {
+                title: "Smart Contracts",
+                description: "Core blockchain infrastructure with account abstraction",
+                icon: "🔗",
+                features: ["Account Abstraction", "Subscription System", "Sub-Wallet Management", "Cross-chain Bridge"]
+              },
+              {
+                title: "Documentation Site",
+                description: "Comprehensive documentation and interactive demo",
+                icon: "📚",
+                features: ["SDK Documentation", "API Reference", "Live Demo", "Integration Guides"]
+              }
+            ].map((component, index) => (
+              <div key={index} className="bg-white/5 rounded-xl p-6 border border-white/10 hover:border-pyhard-blue/30 transition-all duration-300">
+                <div className="text-4xl mb-4">{component.icon}</div>
+                <h3 className="text-xl font-semibold text-white mb-3">{component.title}</h3>
+                <p className="text-gray-400 mb-4">{component.description}</p>
+                <div className="space-y-2">
+                  {component.features.map((feature, idx) => (
+                    <div key={idx} className="flex items-center space-x-2">
+                      <CheckCircle2 className="w-4 h-4 text-pyhard-accent flex-shrink-0" />
+                      <span className="text-sm text-gray-300">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Why We Built It Section */}
       <section className="py-20 bg-white/5">
@@ -220,7 +375,7 @@ export default function Home() {
                   href="/demo"
                   className="inline-flex items-center justify-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-lg font-semibold transition-all"
                 >
-                  <span>Try Demo</span>
+                  <span>Payments SDK Demo</span>
                 </Link>
               </div>
             </div>
@@ -270,28 +425,21 @@ function App() {
               href="/demo"
               className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-lg font-semibold transition-all"
             >
-              <span>View Demo</span>
+              <span>Payments SDK Demo</span>
+            </Link>
+            <Link
+              href="/explore-app"
+              className="inline-flex items-center space-x-2 bg-pyhard-accent/10 hover:bg-pyhard-accent/20 text-pyhard-accent border border-pyhard-accent/30 px-8 py-4 rounded-lg font-semibold transition-all"
+            >
+              <span>Explore the App</span>
             </Link>
           </div>
           
           {/* Links */}
-          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6">
-            <a 
-              href="https://www.npmjs.com/package/pyhard-vendor-sdk" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-pyhard-blue transition-colors duration-200 text-sm"
-            >
-              📦 npm package
-            </a>
-            <a 
-              href="https://github.com/Dawe000/PyHard" 
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-pyhard-blue transition-colors duration-200 text-sm"
-            >
-              🐙 GitHub repository
-            </a>
+          <div className="mt-8 text-center">
+            <p className="text-gray-400 text-sm">
+              Built with PYUSD, Hardhat, and Blockscout integration
+            </p>
           </div>
         </div>
       </section>
