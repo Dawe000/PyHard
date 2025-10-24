@@ -46,7 +46,13 @@ export function Hero() {
               href="/demo"
               className="inline-flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-lg font-semibold transition-all"
             >
-              <span>Try Demo</span>
+              <span>Payments SDK Demo</span>
+            </Link>
+            <Link
+              href="/explore-app"
+              className="inline-flex items-center space-x-2 bg-pyhard-accent/10 hover:bg-pyhard-accent/20 text-pyhard-accent border border-pyhard-accent/30 px-8 py-4 rounded-lg font-semibold transition-all"
+            >
+              <span>Explore the App</span>
             </Link>
           </div>
 

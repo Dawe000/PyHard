@@ -158,12 +158,10 @@ export function DocsLayout({ children, title, description }: DocsLayoutProps) {
         <div className="flex flex-col h-full">
           {/* Sidebar header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-700 flex-shrink-0">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-pyhard-blue to-pyhard-accent rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="text-white font-semibold">PyHard</span>
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Book className="w-5 h-5 text-gray-400" />
+              <span className="text-gray-300 font-semibold">Documentation</span>
+            </div>
             <button
               onClick={() => setSidebarOpen(false)}
               className="lg:hidden text-gray-400 hover:text-white"

@@ -10,8 +10,12 @@ export function Footer() {
           {/* Brand */}
           <div className="col-span-1">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-pyhard-blue to-pyhard-accent rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">P</span>
+              <div className="w-8 h-8 rounded-lg overflow-hidden bg-white">
+                <img 
+                  src="/rsz_pyhard.jpg" 
+                  alt="PyHard Logo" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <span className="text-xl font-space-grotesk font-bold text-white">
                 PyHard
