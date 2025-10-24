@@ -4,6 +4,8 @@ import { Hero } from '@/components/Hero';
 import { Features } from '@/components/Features';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
+export const runtime = 'edge';
+
 export default function Home() {
   return (
     <div>
@@ -271,6 +273,26 @@ function App() {
             >
               <span>View Demo</span>
             </Link>
+          </div>
+          
+          {/* Links */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-6">
+            <a 
+              href="https://www.npmjs.com/settings/dawe0000/packages" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-pyhard-blue transition-colors duration-200 text-sm"
+            >
+              📦 npm package
+            </a>
+            <a 
+              href="https://github.com/Dawe000/PyHard" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-pyhard-blue transition-colors duration-200 text-sm"
+            >
+              🐙 GitHub repository
+            </a>
           </div>
         </div>
       </section>

@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+
+export const runtime = 'edge';
 import {
   WalletConnect,
   SubscriptionQRGenerator,

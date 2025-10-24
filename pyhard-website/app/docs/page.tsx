@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { ArrowRight, Book, Code, Zap, Package } from 'lucide-react';
 import { CodeBlock } from '@/components/CodeBlock';
 
+export const runtime = 'edge';
+
 export default function DocsPage() {
   const installCode = `npm install pyhard-vendor-sdk`;
 
