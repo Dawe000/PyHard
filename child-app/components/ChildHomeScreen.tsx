@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ParentWalletInfo } from '../services/subWalletDetection';
 import { loadChildWallet } from '../utils/crypto';
 import { formatUnits } from 'viem';
+import { getChildTransactions, ChildTransaction } from '../services/transactionHistoryService';
 
 const PYUSD_DECIMALS = 6;
 
@@ -27,6 +28,7 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
   const [loading, setLoading] = useState(true);
   const [childEOA, setChildEOA] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [recentTransactions, setRecentTransactions] = useState<ChildTransaction[]>([]);
 
   useEffect(() => {
     const loadWallet = async () => {
@@ -49,13 +51,25 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
   useEffect(() => {
     if (walletInfo) {
       setLoading(false);
+      loadRecentTransactions();
     }
   }, [walletInfo]);
 
+  const loadRecentTransactions = async () => {
+    if (!walletInfo || !childEOA) return;
+    
+    try {
+      const txs = await getChildTransactions(childEOA, walletInfo.smartWalletAddress);
+      setRecentTransactions(txs.slice(0, 3)); // Show only 3 most recent
+    } catch (error) {
+      console.error('Error loading recent transactions:', error);
+    }
+  };
+
   const onRefresh = useCallback(() => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
-  }, []);
+    loadRecentTransactions().finally(() => setIsRefreshing(false));
+  }, [walletInfo, childEOA]);
 
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -64,6 +78,22 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
   const formatAmount = (amount: bigint | string) => {
     if (typeof amount === 'string') return amount;
     return parseFloat(formatUnits(amount, PYUSD_DECIMALS)).toFixed(2);
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(parseInt(timestamp) * 1000);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString();
   };
 
   const getRemainingBalance = () => {
@@ -215,6 +245,62 @@ export const ChildHomeScreen: React.FC<ChildHomeScreenProps> = ({ onBack, wallet
               </LinearGradient>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.transactionsSection}>
+          <Text style={styles.sectionTitle}>RECENT TRANSACTIONS</Text>
+          {recentTransactions.length > 0 ? (
+            <View style={styles.transactionsList}>
+              {recentTransactions.map((tx) => {
+                const isSent = tx.type === 'sent';
+                return (
+                  <View key={tx.hash} style={styles.transactionCard}>
+                    <LinearGradient
+                      colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.transactionGradient}
+                    >
+                      <View style={styles.transactionContent}>
+                        <View style={styles.transactionLeft}>
+                          <View style={[styles.transactionIcon, { backgroundColor: isSent ? 'rgba(255,69,58,0.2)' : 'rgba(52,199,89,0.2)' }]}>
+                            <Ionicons
+                              name={isSent ? "arrow-up" : "arrow-down"}
+                              size={16}
+                              color={isSent ? "#FF453A" : "#34C759"}
+                            />
+                          </View>
+                          <View style={styles.transactionInfo}>
+                            <Text style={styles.transactionType}>{isSent ? 'Sent' : 'Received'}</Text>
+                            <Text style={styles.transactionTime}>{formatTimestamp(tx.timeStamp)}</Text>
+                          </View>
+                        </View>
+                        <Text style={[styles.transactionAmount, { color: isSent ? "#FF453A" : "#34C759" }]}>
+                          {isSent ? '-' : '+'}{tx.amount} PYUSD
+                        </Text>
+                      </View>
+                    </LinearGradient>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyTransactions}>
+              <LinearGradient
+                colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.emptyGradient}
+              >
+                <View style={styles.emptyContent}>
+                  <Ionicons name="time-outline" size={48} color="rgba(255,255,255,0.3)" />
+                  <Text style={styles.emptyTitle}>No Recent Transactions</Text>
+                  <Text style={styles.emptySubtext}>&gt; Your transaction history will appear here</Text>
+                </View>
+              </LinearGradient>
+            </View>
+          )}
         </View>
       </ScrollView>
     </LinearGradient>
@@ -407,5 +493,81 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+  transactionsSection: {
+    marginBottom: 24,
+  },
+  transactionsList: {
+    gap: 8,
+  },
+  transactionCard: {
+    marginBottom: 8,
+  },
+  transactionGradient: {
+    borderRadius: 12,
+    padding: 1,
+  },
+  transactionContent: {
+    backgroundColor: 'rgba(10,14,39,0.6)',
+    borderRadius: 11,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  transactionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  transactionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transactionInfo: {
+    flex: 1,
+  },
+  transactionType: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  transactionTime: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.5)',
+  },
+  transactionAmount: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  emptyTransactions: {
+    marginTop: 8,
+  },
+  emptyGradient: {
+    borderRadius: 16,
+    padding: 1,
+  },
+  emptyContent: {
+    backgroundColor: 'rgba(10,14,39,0.4)',
+    borderRadius: 15,
+    padding: 32,
+    alignItems: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.6)',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
   },
 });
