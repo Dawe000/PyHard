@@ -2,7 +2,6 @@ import React from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { CheckCircle2, ArrowRight, ExternalLink, Copy } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function ExamplesPage() {
   const basicExampleCode = `import { 

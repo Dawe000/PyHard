@@ -4,7 +4,6 @@ import { ArrowRight, Book, Code, Zap, Package } from 'lucide-react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { DocsLayout } from '@/components/DocsLayout';
 
-export const runtime = 'edge';
 
 export default function DocsPage() {
   const installCode = `npm install pyhard-vendor-sdk`;

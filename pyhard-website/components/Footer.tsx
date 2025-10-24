@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Github, Twitter } from 'lucide-react';
+import { Github } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -77,17 +77,6 @@ export function Footer() {
                 >
                   <Github className="w-4 h-4" />
                   <span>GitHub</span>
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://twitter.com/pyhard"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-gray-400 hover:text-white transition-colors text-sm flex items-center space-x-2"
-                >
-                  <Twitter className="w-4 h-4" />
-                  <span>Twitter</span>
                 </a>
               </li>
             </ul>

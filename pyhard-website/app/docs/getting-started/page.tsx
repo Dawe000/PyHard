@@ -2,7 +2,6 @@ import React from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { CheckCircle2, ArrowRight, ExternalLink } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function GettingStartedPage() {
   const installationCode = `npm install pyhard-vendor-sdk

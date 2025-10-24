@@ -4,7 +4,6 @@ import { Hero } from '@/components/Hero';
 import { Features } from '@/components/Features';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function Home() {
   return (

@@ -1,7 +1,6 @@
 import React from 'react';
 import { CheckCircle2, ArrowRight, Shield, Zap, Users, CreditCard } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function AppDocsPage() {
   return (

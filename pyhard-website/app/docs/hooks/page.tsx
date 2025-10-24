@@ -2,7 +2,6 @@ import React from 'react';
 import { CodeBlock } from '@/components/CodeBlock';
 import { CheckCircle2, ArrowRight, Zap, RefreshCw, Eye } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function HooksPage() {
   const useWalletCode = `import { useWallet } from 'pyhard-vendor-sdk';

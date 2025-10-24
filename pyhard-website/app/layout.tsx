@@ -33,10 +33,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" className={`${spaceGrotesk.variable} ${spaceMono.variable}`}>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased bg-gray-900">
         <PyHardProvider cookies={cookies}>
           <Navigation />
-          <main className="min-h-screen">
+          <main>
             {children}
           </main>
           <Footer />

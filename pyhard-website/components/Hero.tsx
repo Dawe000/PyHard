@@ -4,7 +4,7 @@ import { ArrowRight, Zap } from 'lucide-react';
 
 export function Hero() {
   return (
-    <div className="relative overflow-hidden pt-32 pb-20">
+    <div className="relative overflow-hidden pt-8 pb-20">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-pyhard-blue/20 via-transparent to-pyhard-accent/10 animate-gradient"></div>
       

@@ -2,7 +2,6 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Home } from 'lucide-react';
 
-export const runtime = 'edge';
 
 export default function NotFound() {
   return (

@@ -3,7 +3,6 @@ import { CodeBlock } from '@/components/CodeBlock';
 import { CheckCircle2, ArrowRight, Eye, Code } from 'lucide-react';
 import { DocsLayout } from '@/components/DocsLayout';
 
-export const runtime = 'edge';
 
 export default function ComponentsPage() {
   const walletConnectCode = `import { WalletConnect } from 'pyhard-vendor-sdk';
