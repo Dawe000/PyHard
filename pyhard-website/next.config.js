@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Disable Turbopack to use webpack
+  experimental: {
+    turbo: false,
+  },
   // Simple webpack config for React Native dependencies
   webpack: (config, { isServer }) => {
     if (!isServer) {
