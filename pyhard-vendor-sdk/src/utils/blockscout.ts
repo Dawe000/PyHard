@@ -7,18 +7,29 @@ import {
   SUBSCRIPTION_CREATED_EVENT,
   SUBSCRIPTION_PAYMENT_EVENT 
 } from '../constants';
+import { createPublicClient, http } from 'viem';
+import { arbitrumSepolia } from 'viem/chains';
+import { keccak256, toHex } from 'viem';
 
 /**
  * Fetch all subscriptions for a vendor address
- * Queries all smart wallets created by the factory and filters by vendor
+ * Uses the same approach as the vendor app - RPC calls instead of Blockscout API
  */
 export async function fetchSubscriptions(vendorAddress: string): Promise<Subscription[]> {
   try {
     console.log(`🔍 Fetching subscriptions for vendor: ${vendorAddress}`);
 
+    // Create public client for RPC calls
+    const publicClient = createPublicClient({
+      chain: arbitrumSepolia,
+      transport: http('https://sepolia-rollup.arbitrum.io/rpc')
+    });
+
     // Step 1: Get all SmartWallets created by the factory
-    const walletCreatedEventSignature = "0x5b03bfed1c14a02bdeceb5fa582eb1a5765fc0bc64ca0e6af4c20afc9487f081"; // WalletCreated(address,address)
+    const walletCreatedEventSignature = keccak256(toHex('WalletCreated(address,address)'));
     const factoryLogsUrl = `${BLOCKSCOUT_API_URL}?module=logs&action=getLogs&fromBlock=0&toBlock=latest&topic0=${walletCreatedEventSignature}&address=${SMART_WALLET_FACTORY}`;
+    
+    console.log('📡 Fetching factory logs:', factoryLogsUrl);
     
     const factoryResponse = await fetch(factoryLogsUrl);
     const factoryData = await factoryResponse.json();
@@ -30,6 +41,7 @@ export async function fetchSubscriptions(vendorAddress: string): Promise<Subscri
 
     // Extract smart wallet addresses from factory events
     const smartWalletAddresses: string[] = factoryData.result.map((log: any) => {
+      // SmartWallet address is in topics[2] (third topic)
       const topic = log.topics[2];
       if (topic && topic.length === 66) {
         return '0x' + topic.slice(26);
@@ -43,46 +55,73 @@ export async function fetchSubscriptions(vendorAddress: string): Promise<Subscri
 
     for (const smartWalletAddress of smartWalletAddresses) {
       try {
-        // Get subscription count for this smart wallet
-        const subscriptionCountResponse = await fetch(`${BLOCKSCOUT_API_URL}?module=proxy&action=eth_call&to=${smartWalletAddress}&data=0x${'getSubscriptionCount()'.padStart(64, '0')}&tag=latest`);
-        const subscriptionCountData = await subscriptionCountResponse.json();
+        console.log(`📋 Checking smart wallet: ${smartWalletAddress}`);
         
-        if (subscriptionCountData.result === '0x') {
-          continue;
-        }
+        // Get subscription count for this smart wallet using RPC
+        const subscriptionCount = await publicClient.readContract({
+          address: smartWalletAddress as `0x${string}`,
+          abi: [{
+            type: 'function',
+            name: 'getSubscriptionCount',
+            inputs: [],
+            outputs: [{ type: 'uint256' }],
+            stateMutability: 'view'
+          }],
+          functionName: 'getSubscriptionCount'
+        }) as bigint;
 
-        const subscriptionCount = parseInt(subscriptionCountData.result, 16);
-        console.log(`📋 Smart wallet ${smartWalletAddress} has ${subscriptionCount} subscriptions`);
+        console.log(`📋 Smart wallet has ${subscriptionCount} subscriptions`);
 
-        // Check each subscription
-        for (let i = 1; i <= subscriptionCount; i++) {
+        // Check each subscription - also check a few more IDs in case there are gaps
+        const maxCheck = Math.max(Number(subscriptionCount), 5);
+        console.log(`📋 Checking subscriptions 1 to ${maxCheck} (count was ${subscriptionCount})`);
+        
+        for (let i = 1; i <= maxCheck; i++) {
           try {
-            // Get subscription data
-            const subscriptionData = await fetch(`${BLOCKSCOUT_API_URL}?module=proxy&action=eth_call&to=${smartWalletAddress}&data=0x${'getSubscription(uint256)'.padStart(64, '0')}${i.toString(16).padStart(64, '0')}&tag=latest`);
-            const subscriptionResult = await subscriptionData.json();
-            
-            if (subscriptionResult.result && subscriptionResult.result !== '0x') {
-              // Parse the subscription data (vendor, amount, interval, lastPayment, active)
-              const data = subscriptionResult.result.slice(2);
-              const vendor = '0x' + data.slice(24, 64);
-              const amount = parseInt(data.slice(64, 128), 16).toString();
-              const interval = parseInt(data.slice(128, 192), 16).toString();
-              const lastPayment = parseInt(data.slice(192, 256), 16).toString();
-              const active = data.slice(256, 320) !== '0'.repeat(64);
+            const subscription = await publicClient.readContract({
+              address: smartWalletAddress as `0x${string}`,
+              abi: [{
+                type: 'function',
+                name: 'getSubscription',
+                inputs: [{ type: 'uint256', name: 'subscriptionId' }],
+                outputs: [
+                  { type: 'address', name: 'vendor' },
+                  { type: 'uint256', name: 'amountPerInterval' },
+                  { type: 'uint256', name: 'interval' },
+                  { type: 'uint256', name: 'lastPayment' },
+                  { type: 'bool', name: 'active' }
+                ],
+                stateMutability: 'view'
+              }],
+              functionName: 'getSubscription',
+              args: [BigInt(i)]
+            }) as [string, bigint, bigint, bigint, boolean];
 
-              // Check if this subscription is for our vendor and is active
-              if (vendor.toLowerCase() === vendorAddress.toLowerCase() && active) {
-                console.log(`✅ Found active subscription ${i} for vendor ${vendorAddress}`);
-                allSubscriptions.push({
-                  subscriptionId: i,
-                  smartWallet: smartWalletAddress,
-                  vendor: vendor,
-                  amountPerInterval: amount,
-                  interval: interval,
-                  lastPayment: lastPayment,
-                  active: active
-                });
-              }
+            // Debug: Log subscription details
+            console.log(`📊 Subscription ${i} from smart contract:`, {
+              vendor: subscription[0],
+              requestedVendor: vendorAddress,
+              vendorMatch: subscription[0].toLowerCase() === vendorAddress.toLowerCase(),
+              active: subscription[4],
+              amount: subscription[1].toString(),
+              interval: subscription[2].toString(),
+              lastPayment: subscription[3].toString()
+            });
+
+            // Check if this subscription is for our vendor and is active
+            if (subscription[0].toLowerCase() === vendorAddress.toLowerCase() && subscription[4]) {
+              console.log(`✅ Found active subscription ${i} for vendor ${vendorAddress}`);
+              allSubscriptions.push({
+                subscriptionId: i,
+                smartWallet: smartWalletAddress,
+                vendor: subscription[0],
+                amountPerInterval: subscription[1].toString(),
+                interval: subscription[2].toString(),
+                lastPayment: subscription[3].toString(),
+                active: subscription[4]
+              });
+            } else if (subscription[0].toLowerCase() === vendorAddress.toLowerCase() && !subscription[4]) {
+              console.log(`⚠️ Found INACTIVE subscription ${i} for vendor ${vendorAddress} - this might be the issue!`);
             }
           } catch (subError) {
             console.warn(`⚠️ Error reading subscription ${i} from ${smartWalletAddress}:`, subError);
