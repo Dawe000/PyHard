@@ -2,18 +2,8 @@
 
 import React, { useState } from 'react';
 
-export const runtime = 'edge';
-import {
-  WalletConnect,
-  SubscriptionQRGenerator,
-  PaymentQRGenerator,
-  SubscriptionList,
-  useWallet
-} from 'pyhard-vendor-sdk';
-
 export default function DemoPage() {
   const [activeTab, setActiveTab] = useState<'subscription' | 'payment'>('subscription');
-  const { address } = useWallet();
 
   return (
     <div className="pt-24 pb-20 min-h-screen">
