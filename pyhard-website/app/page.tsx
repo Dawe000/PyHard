@@ -11,47 +11,53 @@ export default function Home() {
       <Hero />
 
       {/* What is PyHard Section */}
-      <section className="py-20 bg-white/5">
+      <section className="py-24 bg-gradient-to-br from-white/5 to-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl font-space-grotesk font-bold text-white mb-6">
-                What is PyHard?
+              <h2 className="text-5xl font-space-grotesk font-bold text-white mb-8">
+                What is <span className="bg-gradient-to-r from-pyhard-blue to-pyhard-accent bg-clip-text text-transparent">PyHard</span>?
               </h2>
-              <p className="text-lg text-gray-300 mb-6">
-                PyHard is a smart wallet system built on Arbitrum that enables <span className="text-pyhard-blue font-semibold">gasless recurring payments</span> using EIP-7702 delegation.
+              <p className="text-xl text-gray-300 mb-8 leading-relaxed">
+                PyHard is a smart wallet system built on Arbitrum that enables <span className="text-pyhard-blue font-semibold bg-pyhard-blue/10 px-2 py-1 rounded">gasless recurring payments</span> using EIP-7702 delegation.
               </p>
-              <p className="text-lg text-gray-300 mb-6">
+              <p className="text-lg text-gray-300 mb-8 leading-relaxed">
                 Vendors can accept subscriptions without users paying gas fees, and users can manage sub-accounts with spending limits for family allowances and budgeting.
               </p>
-              <div className="space-y-3">
-                <div className="flex items-start space-x-3">
-                  <CheckCircle2 className="w-5 h-5 text-pyhard-accent flex-shrink-0 mt-1" />
-                  <span className="text-gray-300">EIP-7702 delegation for gasless transactions</span>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-4 group">
+                  <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-lg">EIP-7702 delegation for gasless transactions</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <CheckCircle2 className="w-5 h-5 text-pyhard-accent flex-shrink-0 mt-1" />
-                  <span className="text-gray-300">PYUSD stablecoin for predictable payments</span>
+                <div className="flex items-start space-x-4 group">
+                  <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-lg">PYUSD stablecoin for predictable payments</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <CheckCircle2 className="w-5 h-5 text-pyhard-accent flex-shrink-0 mt-1" />
-                  <span className="text-gray-300">Sub-account system for family management</span>
+                <div className="flex items-start space-x-4 group">
+                  <div className="w-6 h-6 bg-gradient-to-r from-pyhard-accent to-pyhard-blue rounded-full flex items-center justify-center flex-shrink-0 mt-1 group-hover:scale-110 transition-transform duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-gray-300 text-lg">Sub-account system for family management</span>
                 </div>
               </div>
             </div>
-            <div className="bg-gradient-to-br from-pyhard-blue/20 to-pyhard-accent/20 rounded-lg p-8 border border-white/10">
-              <div className="space-y-4">
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="text-sm text-gray-400 mb-1">Smart Wallet</div>
-                  <div className="font-space-mono text-pyhard-blue">0x1234...5678</div>
+            <div className="bg-gradient-to-br from-pyhard-blue/20 to-pyhard-accent/20 rounded-2xl p-8 border border-white/20 backdrop-blur-sm">
+              <div className="space-y-6">
+                <div className="bg-white/10 rounded-xl p-6 border border-white/20">
+                  <div className="text-sm text-gray-400 mb-2 font-medium">Smart Wallet</div>
+                  <div className="font-space-mono text-pyhard-blue text-lg">0x1234...5678</div>
                 </div>
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="text-sm text-gray-400 mb-1">Monthly Subscription</div>
-                  <div className="text-2xl font-bold text-white">$10.00 PYUSD</div>
+                <div className="bg-white/10 rounded-xl p-6 border border-white/20">
+                  <div className="text-sm text-gray-400 mb-2 font-medium">Monthly Subscription</div>
+                  <div className="text-3xl font-bold text-white">$10.00 PYUSD</div>
                 </div>
-                <div className="bg-white/5 rounded-lg p-4">
-                  <div className="text-sm text-gray-400 mb-1">Gas Fees</div>
-                  <div className="text-2xl font-bold text-pyhard-accent">$0.00</div>
+                <div className="bg-gradient-to-r from-pyhard-accent/20 to-pyhard-blue/20 rounded-xl p-6 border border-pyhard-accent/30">
+                  <div className="text-sm text-pyhard-accent mb-2 font-medium">Gas Fees</div>
+                  <div className="text-3xl font-bold text-pyhard-accent">$0.00</div>
                 </div>
               </div>
             </div>

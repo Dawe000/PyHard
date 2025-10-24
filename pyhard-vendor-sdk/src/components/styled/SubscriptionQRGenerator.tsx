@@ -59,47 +59,51 @@ export function SubscriptionQRGenerator({ onQRGenerated, className = '' }: Subsc
 
   return (
     <div className={`pyhard-subscription-qr-generator ${className}`}>
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Create Subscription QR Code
-        </h3>
-
+      <div className="space-y-6">
         {!address ? (
           <div className="text-center py-8">
-            <p className="text-gray-600 mb-4">Please connect your wallet first</p>
+            <div className="w-16 h-16 bg-gradient-to-r from-pyhard-blue/20 to-pyhard-accent/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">🔗</span>
+            </div>
+            <p className="text-gray-400 mb-4">Please connect your wallet first</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {/* Amount Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-white mb-3">
                 Amount (PYUSD)
               </label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="10.00"
-                step="0.01"
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div className="relative">
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="10.00"
+                  step="0.01"
+                  min="0"
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pyhard-blue focus:border-pyhard-blue transition-all duration-200"
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">
+                  PYUSD
+                </div>
+              </div>
             </div>
 
             {/* Interval Selection */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-white mb-3">
                 Billing Interval
               </label>
-              <div className="grid grid-cols-2 gap-2 mb-2">
+              <div className="grid grid-cols-2 gap-3">
                 {(['daily', 'weekly', 'monthly'] as const).map((type) => (
                   <button
                     key={type}
                     onClick={() => setIntervalType(type)}
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                       intervalType === type
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-gradient-to-r from-pyhard-blue to-pyhard-accent text-white shadow-lg'
+                        : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white border border-white/20'
                     }`}
                   >
                     {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -107,10 +111,10 @@ export function SubscriptionQRGenerator({ onQRGenerated, className = '' }: Subsc
                 ))}
                 <button
                   onClick={() => setIntervalType('custom')}
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                     intervalType === 'custom'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      ? 'bg-gradient-to-r from-pyhard-blue to-pyhard-accent text-white shadow-lg'
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white border border-white/20'
                   }`}
                 >
                   Custom
@@ -118,14 +122,16 @@ export function SubscriptionQRGenerator({ onQRGenerated, className = '' }: Subsc
               </div>
 
               {intervalType === 'custom' && (
-                <input
-                  type="number"
-                  value={customInterval}
-                  onChange={(e) => setCustomInterval(e.target.value)}
-                  placeholder="Days"
-                  min="1"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="mt-4">
+                  <input
+                    type="number"
+                    value={customInterval}
+                    onChange={(e) => setCustomInterval(e.target.value)}
+                    placeholder="Enter days"
+                    min="1"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pyhard-blue focus:border-pyhard-blue transition-all duration-200"
+                  />
+                </div>
               )}
             </div>
 
@@ -133,10 +139,10 @@ export function SubscriptionQRGenerator({ onQRGenerated, className = '' }: Subsc
             <button
               onClick={handleGenerateQR}
               disabled={!isValid}
-              className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
+              className={`w-full py-3 px-4 rounded-lg font-medium transition-all duration-200 ${
                 isValid
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'bg-gradient-to-r from-pyhard-blue to-pyhard-accent hover:from-pyhard-blue/90 hover:to-pyhard-accent/90 text-white shadow-lg hover:shadow-xl'
+                  : 'bg-white/10 text-gray-500 cursor-not-allowed border border-white/20'
               }`}
             >
               Generate QR Code
@@ -144,16 +150,20 @@ export function SubscriptionQRGenerator({ onQRGenerated, className = '' }: Subsc
 
             {/* QR Code Display */}
             {qrData && (
-              <div className="mt-6 text-center">
-                <h4 className="text-md font-medium text-gray-900 mb-3">
+              <div className="mt-8 text-center">
+                <h4 className="text-lg font-semibold text-white mb-4">
                   Subscription QR Code
                 </h4>
-                <div className="inline-block p-4 bg-white rounded-lg border">
+                <div className="inline-block p-6 bg-white rounded-xl shadow-lg">
                   <QRCodeCanvas value={qrData} size={256} />
                 </div>
-                <div className="mt-4 text-sm text-gray-600">
-                  <p>Amount: {formatAmount(amount)}</p>
-                  <p>Interval: {formatInterval(getIntervalSeconds())}</p>
+                <div className="mt-4 space-y-2">
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium">Amount:</span> {formatAmount(amount)}
+                  </div>
+                  <div className="text-sm text-gray-300">
+                    <span className="font-medium">Interval:</span> {formatInterval(getIntervalSeconds())}
+                  </div>
                 </div>
               </div>
             )}
