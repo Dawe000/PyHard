@@ -1,27 +1,81 @@
 # PyHard Vendor SDK
 
-A React SDK for integrating PyHard subscriptions and payments into vendor applications. Supports both styled (ready-to-use) and headless (fully customizable) components.
+A comprehensive React SDK for integrating PyHard subscriptions and payments into vendor applications. This SDK enables vendors to accept PYUSD payments, manage subscriptions, and integrate with the PyHard ecosystem seamlessly.
 
-## Features
+## 🚀 Key Features
 
-- 🔗 **Wallet Connection**: Reown AppKit integration or manual address input
-- 📱 **QR Code Generation**: Create subscription and payment QR codes
-- 💰 **Payment Management**: Execute subscription payments when due
-- 📊 **Real-time Data**: Poll Blockscout for payment events
-- 🎨 **Dual Components**: Styled and headless component options
-- 🔒 **Type Safety**: Full TypeScript support
-- ⚡ **Auto-refresh**: Automatic data updates
+### 💳 Payment Integration
+- **PYUSD Payments**: Accept PYUSD stablecoin payments
+- **QR Code Generation**: Generate payment and subscription QR codes
+- **Wallet Connection**: Integrate with Reown AppKit or manual address input
+- **Real-time Processing**: Process payments in real-time
 
-## Installation
+### 📊 Subscription Management
+- **Subscription Creation**: Create recurring payment subscriptions
+- **Payment Execution**: Execute subscription payments automatically
+- **Subscription Tracking**: Track subscription status and history
+- **Payment History**: Complete payment history for subscriptions
 
+### 🎨 Flexible UI Components
+- **Styled Components**: Ready-to-use styled components
+- **Headless Components**: Fully customizable components with render props
+- **Tailwind CSS**: Built-in Tailwind CSS styling
+- **TypeScript Support**: Full TypeScript support with type definitions
+
+### 🔄 Real-time Data
+- **Payment Detection**: Automatically detect new payments
+- **Blockchain Polling**: Poll Blockscout for payment events
+- **Auto-refresh**: Automatic data updates
+- **WebSocket Support**: Real-time updates via WebSocket
+
+## 🏗️ Technical Architecture
+
+### Core Technologies
+- **React 18+**: Modern React with hooks
+- **TypeScript**: Type-safe development
+- **Viem**: Ethereum interaction library
+- **Wagmi**: React hooks for Ethereum
+- **Reown AppKit**: Wallet connection
+- **Tailwind CSS**: Utility-first CSS framework
+
+### Component Architecture
+```
+PyHardProvider (Context)
+├── WalletConnect (Styled/Headless)
+├── SubscriptionQRGenerator (Styled/Headless)
+├── PaymentQRGenerator (Styled/Headless)
+├── SubscriptionList (Styled/Headless)
+└── PaymentHistory (Styled/Headless)
+```
+
+## 🚀 Getting Started
+
+### Prerequisites
+- React 18+
+- Node.js 18+
+- Tailwind CSS (for styling)
+- Viem and Wagmi (for blockchain interaction)
+
+### Installation
+
+1. **Install the SDK**
 ```bash
 npm install pyhard-vendor-sdk
 ```
 
-## Quick Start
+2. **Install peer dependencies**
+```bash
+npm install viem wagmi @reown/appkit @reown/appkit-adapter-wagmi
+```
 
-### 1. Wrap your app with PyHardProvider
+3. **Install Tailwind CSS**
+```bash
+npm install tailwindcss
+```
 
+### Quick Start
+
+1. **Wrap your app with PyHardProvider**
 ```tsx
 import { PyHardProvider } from 'pyhard-vendor-sdk';
 
@@ -34,8 +88,7 @@ function App() {
 }
 ```
 
-### 2. Use styled components
-
+2. **Use styled components**
 ```tsx
 import { 
   WalletConnect, 
@@ -54,41 +107,7 @@ function VendorDashboard() {
 }
 ```
 
-### 3. Use headless components for custom UI
-
-```tsx
-import { SubscriptionQRGenerator } from 'pyhard-vendor-sdk';
-
-function CustomSubscriptionForm() {
-  return (
-    <SubscriptionQRGenerator>
-      {({ amount, setAmount, interval, setInterval, generateQR, qrData, isValid }) => (
-        <div>
-          <input 
-            value={amount} 
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount"
-          />
-          <select 
-            value={interval} 
-            onChange={(e) => setInterval(e.target.value)}
-          >
-            <option value="86400">Daily</option>
-            <option value="604800">Weekly</option>
-            <option value="2592000">Monthly</option>
-          </select>
-          <button onClick={generateQR} disabled={!isValid}>
-            Generate QR
-          </button>
-          {qrData && <QRCode value={qrData} />}
-        </div>
-      )}
-    </SubscriptionQRGenerator>
-  );
-}
-```
-
-## Components
+## 🎨 Components
 
 ### Styled Components
 
@@ -146,12 +165,33 @@ Show payment history for a subscription.
 
 All styled components have headless equivalents that use render props:
 
-- `SubscriptionQRGenerator` (headless)
-- `PaymentQRGenerator` (headless)
-- `SubscriptionList` (headless)
-- `PaymentHistory` (headless)
+```tsx
+<SubscriptionQRGenerator>
+  {({ amount, setAmount, interval, setInterval, generateQR, qrData, isValid }) => (
+    <div>
+      <input 
+        value={amount} 
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="Amount"
+      />
+      <select 
+        value={interval} 
+        onChange={(e) => setInterval(e.target.value)}
+      >
+        <option value="86400">Daily</option>
+        <option value="604800">Weekly</option>
+        <option value="2592000">Monthly</option>
+      </select>
+      <button onClick={generateQR} disabled={!isValid}>
+        Generate QR
+      </button>
+      {qrData && <QRCode value={qrData} />}
+    </div>
+  )}
+</SubscriptionQRGenerator>
+```
 
-## Hooks
+## 🔧 Hooks
 
 ### useWallet
 Manage wallet connection state.
@@ -209,9 +249,9 @@ const {
 );
 ```
 
-## Payment Detection
+## 🔄 Payment Detection
 
-The SDK automatically detects new payments by polling Blockscout for events. You can use the `usePaymentDetection` hook to get notified when new payments are made:
+The SDK automatically detects new payments by polling Blockscout for events:
 
 ```tsx
 function PaymentNotification() {
@@ -234,9 +274,23 @@ function PaymentNotification() {
 }
 ```
 
-## Manual Wallet Address
+## 🔧 Configuration
 
-For vendors who don't want to use wallet connection, you can use manual address input:
+### PyHardProvider Configuration
+```tsx
+<PyHardProvider 
+  config={{
+    rpcUrl: 'https://custom-rpc.com',
+    blockscoutUrl: 'https://custom-blockscout.com/api',
+    paymasterUrl: 'https://custom-paymaster.com'
+  }}
+>
+  <YourApp />
+</PyHardProvider>
+```
+
+### Manual Wallet Address
+For vendors who don't want to use wallet connection:
 
 ```tsx
 function ManualVendor() {
@@ -255,29 +309,10 @@ function ManualVendor() {
 }
 ```
 
-## Configuration
+## 🎨 Styling
 
-Configure the SDK with custom settings:
-
-```tsx
-<PyHardProvider 
-  config={{
-    rpcUrl: 'https://custom-rpc.com',
-    blockscoutUrl: 'https://custom-blockscout.com/api',
-    paymasterUrl: 'https://custom-paymaster.com'
-  }}
->
-  <YourApp />
-</PyHardProvider>
-```
-
-## Styling
-
-The SDK uses Tailwind CSS for styling. Make sure to include Tailwind in your project:
-
-```bash
-npm install tailwindcss
-```
+### Tailwind CSS
+The SDK uses Tailwind CSS for styling. Include Tailwind in your project:
 
 ```css
 @tailwind base;
@@ -285,28 +320,16 @@ npm install tailwindcss
 @tailwind utilities;
 ```
 
-For custom styling, you can:
+### Custom Styling
+You can customize styling in several ways:
 
-1. Override Tailwind classes
-2. Use headless components with your own styling
-3. Use CSS modules or styled-components
+1. **Override Tailwind classes**
+2. **Use headless components with your own styling**
+3. **Use CSS modules or styled-components**
 
-## TypeScript
+## 📱 Complete Example
 
-The SDK is fully typed. Import types as needed:
-
-```tsx
-import { 
-  Subscription, 
-  PaymentHistory, 
-  PyHardConfig 
-} from 'pyhard-vendor-sdk';
-```
-
-## Examples
-
-### Complete Vendor Dashboard
-
+### Vendor Dashboard
 ```tsx
 import { 
   PyHardProvider,
@@ -347,7 +370,6 @@ function App() {
 ```
 
 ### Custom Payment Form
-
 ```tsx
 import { PaymentQRGenerator } from 'pyhard-vendor-sdk';
 
@@ -393,6 +415,79 @@ function CustomPaymentForm() {
 }
 ```
 
-## License
+## 🔐 Security Features
 
-MIT
+### Signature Verification
+- **ECDSA Validation**: Validates user signatures
+- **Nonce Protection**: Prevents replay attacks
+- **Deadline Checking**: Ensures requests haven't expired
+- **Address Verification**: Verifies wallet addresses
+
+### Data Protection
+- **Local Storage**: Sensitive data stored locally
+- **Encryption**: Data encrypted at rest
+- **Secure Communication**: Encrypted communication with blockchain
+- **Privacy Controls**: Limited data collection
+
+## 🧪 Testing
+
+### Testnet Configuration
+- **Arbitrum Sepolia**: Testnet for development
+- **Test PYUSD**: Use testnet PYUSD tokens
+- **Test ETH**: Use testnet ETH for gas
+- **Mock Data**: Test with mock transaction data
+
+### Testing Features
+- **Component Testing**: Test all components
+- **Hook Testing**: Test all hooks
+- **Integration Testing**: Test complete workflows
+- **Payment Testing**: Test payment processing
+
+## 🚀 Advanced Features
+
+### Subscription Management
+- **Recurring Payments**: Automated recurring payments
+- **Payment Scheduling**: Schedule payments for specific times
+- **Payment Retry**: Retry failed payments automatically
+- **Payment Notifications**: Notify users of payment status
+
+### Analytics Integration
+- **Payment Analytics**: Track payment metrics
+- **User Analytics**: Track user behavior
+- **Revenue Analytics**: Track revenue metrics
+- **Custom Events**: Track custom events
+
+## 🔮 Future Enhancements
+
+### Planned Features
+- **Multi-chain Support**: Support for additional chains
+- **Advanced Analytics**: Enhanced analytics dashboard
+- **Payment Methods**: Support for additional payment methods
+- **Internationalization**: Multi-language support
+
+### Performance Improvements
+- **Caching**: Enhanced caching strategies
+- **Optimization**: Performance optimizations
+- **Bundle Size**: Reduced bundle size
+- **Loading States**: Improved loading states
+
+## 🛠️ Development
+
+### Key Files
+- `src/index.ts`: Main SDK entry point
+- `src/components/`: React components
+- `src/hooks/`: React hooks
+- `src/types.ts`: TypeScript type definitions
+- `src/utils/`: Utility functions
+
+### Development Commands
+```bash
+# Build the SDK
+npm run build
+
+# Watch for changes
+npm run dev
+
+# Clean build
+npm run clean
+```
