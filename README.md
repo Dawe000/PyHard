@@ -182,44 +182,87 @@ npx hardhat compile
 ## 🏆 Bounties & Integrations
 
 ### PayPal USD (PYUSD) Integration
-**What we used it for:**
-- **Primary Stablecoin**: PYUSD as the main currency for all transactions
-- **Gasless Transactions**: Users never pay gas fees, all sponsored by paymaster
-- **Vendor Payments**: Vendors receive payments in PYUSD
-- **Family Banking**: Sub-wallets and allowances in PYUSD
+**Where we used it:**
 
-**Implementation:**
-- Contract address: `0x6c3ea9036406852006290770BEdFcAbA0e23A0e8` (Arbitrum Sepolia)
-- 6 decimal precision for accurate calculations
-- Integration across all components (mobile app, child app, vendor SDK, smart contracts)
+**Mobile App (`pyhard-app`):**
+- **Balance Screen**: Displays PYUSD balance as primary currency with 6-decimal precision
+- **Transaction History**: All transactions show PYUSD amounts and transfers
+- **Sub-Account Management**: Family allowances and spending limits in PYUSD
+- **Quick Actions**: Send/Receive buttons handle PYUSD transfers
+- **Contract Integration**: Direct interaction with PYUSD contract at `0x6c3ea9036406852006290770BEdFcAbA0e23A0e8`
+
+**Child App (`pyhard-child-app`):**
+- **Balance Display**: Shows available PYUSD allowance from parent
+- **Send Money Screen**: Transfers PYUSD to contacts and vendors
+- **Transaction History**: Tracks PYUSD spending and receipts
+- **QR Code Payments**: Generates QR codes for PYUSD payments
+
+**Vendor SDK (`pyhard-vendor-sdk`):**
+- **Payment Processing**: Accepts PYUSD payments from customers
+- **Subscription Management**: Recurring PYUSD payments to vendors
+- **QR Code Generation**: Creates PYUSD payment and subscription QR codes for instant payments
+- **Payment Detection**: Monitors PYUSD payment events via Blockscout
+- **NPM Package**: Available at [https://www.npmjs.com/package/pyhard-vendor-sdk](https://www.npmjs.com/package/pyhard-vendor-sdk)
+
+**Smart Contracts (`smartwallet`):**
+- **SmartWallet.sol**: Core contract holds and manages PYUSD tokens
+- **Subscription System**: Automated PYUSD transfers to vendors
+- **Sub-Wallet System**: PYUSD allowances and spending limits
+- **Transfer Functions**: `transferPYUSD()` for direct PYUSD transfers
+
+**Paymaster (`paymaster-cf-worker`):**
+- **Gas Sponsorship**: Sponsors gas for PYUSD transactions
+- **Transaction Validation**: Validates PYUSD transfer operations
+- **PYUSD Integration**: References PYUSD contract in transaction execution
+
+**Ecosystem Integration:**
+- **Vendor Onboarding**: Complete ecosystem for vendors to accept PYUSD payments
+- **QR Code System**: Generate payment and subscription QR codes for instant transactions
+- **Subscription Management**: Automated recurring payments to vendors
+- **Payment Processing**: Real-time payment processing with gasless transactions
+- **Vendor SDK**: Easy integration for vendors via [PyHard Vendor SDK](https://www.npmjs.com/package/pyhard-vendor-sdk)
 
 ### Hardhat Integration
-**What we used it for:**
-- **Smart Contract Development**: Complete smart wallet system development
-- **Testing Framework**: Comprehensive test suite for all contracts
-- **Deployment Scripts**: Automated deployment to multiple networks
-- **TypeScript Integration**: Type-safe contract interactions
-- **Plugin Ecosystem**: Integration with OpenZeppelin, Foundry, and other tools
+**Where we used it:**
 
-**Implementation:**
-- Hardhat 3.0 with TypeScript support
-- Foundry integration for advanced testing
-- Multi-network deployment (local, Sepolia, mainnet)
-- Gas optimization and security best practices
+**Smart Contract Development (`smartwallet`):**
+- **Contract Compilation**: Compiles all Solidity contracts with optimization
+- **Testing Framework**: Unit tests for SmartWallet, Factory, and Paymaster contracts
+- **Deployment Scripts**: Automated deployment to Arbitrum Sepolia testnet
+- **TypeScript Integration**: Type-safe contract interactions with Viem
+- **Plugin Integration**: OpenZeppelin contracts, Foundry testing, and security tools
+
+**Development Workflow:**
+- **Local Testing**: `npx hardhat test` for contract testing
+- **Network Configuration**: Sepolia RPC integration for testnet deployment
+- **Gas Optimization**: Contract optimization for efficient gas usage
+- **Security Auditing**: Integration with security analysis tools
 
 ### Blockscout Integration
-**What we used it for:**
-- **Transaction Monitoring**: Real-time transaction tracking and status
-- **Payment Detection**: Automatic detection of new payments for vendors
-- **Event Logging**: Comprehensive event logging for all smart contract interactions
-- **API Integration**: RESTful API for fetching transaction data
-- **Analytics**: Transaction analytics and reporting
+**Where we used it:**
 
-**Implementation:**
-- Real-time polling for payment events
-- Event filtering for subscription payments
-- Transaction history retrieval
-- Payment confirmation and status updates
+**Vendor SDK (`pyhard-vendor-sdk`):**
+- **Payment Detection**: `usePaymentDetection` hook polls Blockscout API for new PYUSD payments
+- **Transaction Monitoring**: Real-time monitoring of subscription payments
+- **Event Filtering**: Filters for `PaymentExecuted` events from smart contracts
+- **Payment History**: `usePaymentHistory` hook fetches transaction data from Blockscout
+- **API Endpoints**: RESTful calls to Blockscout API for transaction data
+
+**Mobile App (`pyhard-app`):**
+- **Transaction Updates**: Pulls latest transaction data from Blockscout
+- **Balance Synchronization**: Updates PYUSD balances from blockchain state
+- **Payment Confirmation**: Confirms transaction status via Blockscout
+- **History Display**: Shows transaction history from Blockscout data
+
+**Child App (`pyhard-child-app`):**
+- **Transaction Tracking**: Monitors child wallet transactions via Blockscout
+- **Spending Monitoring**: Tracks PYUSD spending against limits
+- **Parent Notifications**: Real-time updates for parent oversight
+
+**Paymaster (`paymaster-cf-worker`):**
+- **Transaction Verification**: Verifies transaction success via Blockscout
+- **Gas Usage Tracking**: Monitors gas consumption for sponsored transactions
+- **Error Handling**: Checks transaction status for failed operations
 
 ## 🔄 System Architecture
 
