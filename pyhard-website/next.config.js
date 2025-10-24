@@ -1,13 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Simplified webpack config that works with Turbopack
+  // Turbopack configuration for Next.js 16
+  turbopack: {
+    rules: {
+      '*.node': {
+        loaders: ['ignore-loader'],
+      },
+    },
+    resolveAlias: {
+      '@react-native-async-storage/async-storage': false,
+      'react-native': false,
+    },
+  },
+  // Webpack fallback for non-Turbopack builds
   webpack: (config, { isServer, dev }) => {
-    // Only apply webpack config when not using Turbopack
-    if (!dev || process.env.TURBOPACK) {
-      return config;
-    }
-    
     if (!isServer) {
       config.resolve.fallback = { 
         fs: false, 
