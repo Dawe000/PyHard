@@ -115,56 +115,6 @@ export default function Home() {
       {/* Features Section */}
       <Features />
 
-      {/* Explore the App Section */}
-      <section id="explore-app" className="py-20 bg-gradient-to-br from-pyhard-accent/5 to-pyhard-blue/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-space-grotesk font-bold text-white mb-4">
-              Explore the App
-            </h2>
-            <p className="text-xl text-gray-400 max-w-3xl mx-auto">
-              Discover the PyHard mobile experience with gasless transactions, family banking, and social features
-            </p>
-          </div>
-
-          {/* App Preview */}
-          <div className="bg-white/5 rounded-2xl p-12 border border-white/10 text-center">
-            <div className="text-6xl mb-6">📱</div>
-            <h3 className="text-2xl font-semibold text-white mb-4">
-              Mobile App Experience
-            </h3>
-            <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              Experience the future of digital banking with our intuitive mobile app designed for everyday users.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
-              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                <div className="text-3xl mb-3">💳</div>
-                <h4 className="text-lg font-semibold text-white mb-2">Payment Features</h4>
-                <p className="text-gray-400 text-sm">QR code payments, gasless transactions, and social payments</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                <div className="text-3xl mb-3">👨‍👩‍👧‍👦</div>
-                <h4 className="text-lg font-semibold text-white mb-2">Family Banking</h4>
-                <p className="text-gray-400 text-sm">Sub-wallets, spending limits, and parental controls</p>
-              </div>
-              <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                <div className="text-3xl mb-3">📊</div>
-                <h4 className="text-lg font-semibold text-white mb-2">Subscription Management</h4>
-                <p className="text-gray-400 text-sm">Recurring payments, vendor subscriptions, and payment history</p>
-              </div>
-            </div>
-            
-            {/* CTA Button */}
-            <Link
-              href="/explore-app"
-              className="inline-flex items-center space-x-2 bg-pyhard-blue hover:bg-pyhard-blue/80 text-white px-8 py-4 rounded-lg font-semibold transition-all transform hover:scale-105"
-            >
-              <span>Explore the Full App</span>
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
 
       {/* Ecosystem Components Section */}
       <section className="py-20 bg-gradient-to-br from-pyhard-blue/5 to-pyhard-accent/5">
