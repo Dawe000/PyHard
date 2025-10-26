@@ -127,16 +127,16 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Placeholder content - to be filled later */}
+          {/* App Preview */}
           <div className="bg-white/5 rounded-2xl p-12 border border-white/10 text-center">
             <div className="text-6xl mb-6">📱</div>
             <h3 className="text-2xl font-semibold text-white mb-4">
-              Mobile App Showcase
+              Mobile App Experience
             </h3>
             <p className="text-gray-400 mb-8 max-w-2xl mx-auto">
-              This section will showcase the PyHard mobile app with screenshots, feature highlights, and user experience demonstrations.
+              Experience the future of digital banking with our intuitive mobile app designed for everyday users.
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
               <div className="bg-white/5 rounded-lg p-6 border border-white/10">
                 <div className="text-3xl mb-3">💳</div>
                 <h4 className="text-lg font-semibold text-white mb-2">Payment Features</h4>
@@ -153,6 +153,15 @@ export default function Home() {
                 <p className="text-gray-400 text-sm">Recurring payments, vendor subscriptions, and payment history</p>
               </div>
             </div>
+            
+            {/* CTA Button */}
+            <Link
+              href="/explore-app"
+              className="inline-flex items-center space-x-2 bg-pyhard-blue hover:bg-pyhard-blue/80 text-white px-8 py-4 rounded-lg font-semibold transition-all transform hover:scale-105"
+            >
+              <span>Explore the Full App</span>
+              <ArrowRight className="w-5 h-5" />
+            </Link>
           </div>
         </div>
       </section>
