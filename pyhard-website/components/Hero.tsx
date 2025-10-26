@@ -15,22 +15,22 @@ export function Hero() {
           <div className="inline-flex items-center space-x-2 bg-pyhard-blue/10 border border-pyhard-blue/30 rounded-full px-4 py-2 mb-8">
             <Zap className="w-4 h-4 text-pyhard-accent" />
             <span className="text-sm font-medium text-gray-300">
-              Powered by EIP-7702 Delegation
+              Banking Meets Blockchain
             </span>
           </div>
 
           {/* Heading */}
           <h1 className="text-5xl md:text-7xl font-space-grotesk font-bold mb-6">
             <span className="bg-gradient-to-r from-white via-pyhard-blue to-pyhard-accent bg-clip-text text-transparent">
-              Gasless Subscriptions
+              Digital Banking
             </span>
             <br />
-            <span className="text-white">on Arbitrum</span>
+            <span className="text-white">Reimagined</span>
           </h1>
 
           {/* Subheading */}
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto">
-            Accept recurring PYUSD payments with <span className="text-pyhard-accent font-semibold">zero gas fees</span> using EIP-7702 delegation
+            Send money, pay subscriptions, and manage family finances with <span className="text-pyhard-accent font-semibold">zero fees</span> and familiar banking UX
           </p>
 
           {/* CTA Buttons */}
@@ -60,15 +60,15 @@ export function Hero() {
           <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="bg-white/5 border border-white/10 rounded-lg p-6">
               <div className="text-3xl font-bold text-pyhard-accent mb-2">$0</div>
-              <div className="text-gray-400">Gas Fees for Users</div>
+              <div className="text-gray-400">Transaction Fees</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <div className="text-3xl font-bold text-pyhard-blue mb-2">EIP-7702</div>
-              <div className="text-gray-400">Delegation Standard</div>
+              <div className="text-3xl font-bold text-pyhard-blue mb-2">PYUSD</div>
+              <div className="text-gray-400">Stable Currency</div>
             </div>
             <div className="bg-white/5 border border-white/10 rounded-lg p-6">
-              <div className="text-3xl font-bold text-white mb-2">Arbitrum</div>
-              <div className="text-gray-400">Built on Sepolia</div>
+              <div className="text-3xl font-bold text-white mb-2">Family</div>
+              <div className="text-gray-400">Banking Features</div>
             </div>
           </div>
         </div>
